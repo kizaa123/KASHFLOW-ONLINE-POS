@@ -367,7 +367,16 @@
       );
     },
 
-    getShopName: () => read(KEYS.shopName, 'KASHFLOW'),
+    getShopName() {
+      const name = read(KEYS.shopName, 'KASHFLOW');
+      let user = '';
+      try {
+        const s = (global.KFCloud && KFCloud.session && KFCloud.session()) || JSON.parse(sessionStorage.getItem(KEYS.session) || 'null');
+        user = (s && s.username) || '';
+      } catch (e) { /* ignore */ }
+      if (String(user).toLowerCase() === 'kizaa' && (!name || name === 'KASHFLOW')) return 'KB.TECH STUDIO';
+      return name;
+    },
     setShopName: (name) => write(KEYS.shopName, name),
 
     orderNumber() {
@@ -488,6 +497,9 @@
             cloudSession.photo = profile.photo || cloudSession.photo;
             cloudSession.staffId = profile.staffId || cloudSession.staffId;
           }
+          if (String(cloudSession.username || '').toLowerCase() === 'kizaa') {
+            cloudSession.displayName = 'KB.TECH STUDIO';
+          }
           return cloudSession;
         }
       }
@@ -495,6 +507,7 @@
       if (!s || typeof s.username !== 'string') return null;
       if (s.shopId && s.token) {
         if (s.roleTitle) s.role = KF.accessLevel(s.roleTitle) || s.role;
+        if (String(s.username || '').toLowerCase() === 'kizaa') s.displayName = 'KB.TECH STUDIO';
         return s;
       }
       if (typeof s.token !== 'string') return null;
@@ -563,10 +576,11 @@
       return read(KEYS.trialStarted, null);
     },
     isLicensed() {
+      if (read(KEYS.licensed, false)) return true;
       const s = KF.getSession();
       if (s && KF.isReservedUsername(s.username)) return true;
       if (s && s.licensed) return true;
-      return !!read(KEYS.licensed, false);
+      return false;
     },
     isTrialLocked() {
       if (KF.isLicensed()) return false;

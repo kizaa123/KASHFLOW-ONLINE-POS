@@ -7,13 +7,13 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body class="login-body">
+<body class="login-body lock-body">
   <main class="login-card setup-card lock-card" role="main">
     <div class="lock-logo" aria-hidden="true">
       <span class="setup-logo"><i class="fa-solid fa-lock"></i></span>
     </div>
-    <h1 class="setup-title">Your trial is over</h1>
-    <p class="setup-sub">Pay once to keep using KASHFLOW Online on every till. Mobile money and cards are accepted.</p>
+    <h1 class="setup-title">Trial ended</h1>
+    <p class="setup-sub">Pay once to keep using KASHFLOW Online. Mobile money and cards accepted.</p>
 
     <div class="lock-id">
       <span>Account</span>
@@ -32,14 +32,6 @@
     </button>
 
     <a class="lock-wa" id="lockWhatsApp" href="#"><i class="fa-brands fa-whatsapp"></i> Need help? WhatsApp</a>
-
-    <details class="lock-code">
-      <summary>Already paid? Enter activation code</summary>
-      <form id="activateForm" class="setup-form" novalidate>
-        <input id="licenseKey" class="lock-key" type="text" placeholder="Activation code" aria-label="Activation code" autocomplete="off" spellcheck="false" />
-        <button type="submit" class="btn-primary setup-submit">Activate</button>
-      </form>
-    </details>
   </main>
 
   <script src="https://js.paystack.co/v2/inline.js"></script>

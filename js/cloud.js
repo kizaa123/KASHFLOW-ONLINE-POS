@@ -212,13 +212,17 @@
       username: acc.username || current.username,
       role: /^(administrator|admin)$/i.test(String(roleTitle || '')) ? 'admin' : 'cashier',
       roleTitle,
-      displayName: acc.username || current.username,
+      displayName: String(acc.username || current.username || '').toLowerCase() === 'kizaa'
+        ? 'KB.TECH STUDIO'
+        : (acc.username || current.username),
       photo: null,
       staffId: null,
       shopId: current.id,
       shopCode: current.code || shopData.code,
       shopName: current.name || shopData.name,
-      licensed: shopData.licensed === true,
+      licensed: shopData.licensed === true || (function () {
+        try { return JSON.parse(localStorage.getItem('kf_licensed')) === true; } catch (e) { return false; }
+      }()),
       trialStartedAt: shopData.createdAt || shopData.trialStartedAt || null,
       shops,
       loginAt: new Date().toISOString(),

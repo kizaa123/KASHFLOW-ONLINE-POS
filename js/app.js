@@ -54,7 +54,7 @@
         <span class="sidebar-user-row">
           <span class="avatar" id="sidebarAvatar">${safePhoto(session.photo) ? `<img src="${safePhoto(session.photo)}" alt="" />` : '<i class="fa-solid fa-user"></i>'}</span>
           <span class="sidebar-user-meta">
-            <span class="sidebar-username">${esc(session.username || session.displayName || '')}</span>
+            <span class="sidebar-username">${esc(session.displayName || session.username || '')}</span>
             ${session.roleTitle ? `<span class="sidebar-role">${esc(session.roleTitle)}</span>` : ''}
           </span>
         </span>

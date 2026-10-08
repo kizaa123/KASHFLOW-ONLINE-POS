@@ -1,4 +1,4 @@
-/* Trial ended: Paystack checkout, then unlock. WhatsApp and activation code stay as backup. */
+/* Trial ended: Paystack checkout unlocks the shop at once. WhatsApp is only for help. */
 (async function () {
   if (window.KFCloud && KFCloud.enabled()) {
     try { await KFCloud.ready(); } catch (e) { /* continue */ }
@@ -9,10 +9,6 @@
     window.location.replace('login.html');
     return;
   }
-  if (!KF.isTrialLocked()) {
-    window.location.replace(session.role === 'admin' ? 'dashboard.html' : 'pos.html');
-    return;
-  }
 
   const cfg = window.KF_PAYSTACK || {};
   const userEl = document.getElementById('lockUser');
@@ -20,10 +16,8 @@
   const emailEl = document.getElementById('payEmail');
   const errEl = document.getElementById('lockError');
   const payBtn = document.getElementById('payBtn');
-  const form = document.getElementById('activateForm');
-  const keyEl = document.getElementById('licenseKey');
 
-  userEl.textContent = session.username || '—';
+  userEl.textContent = session.displayName || session.username || '—';
   const amountGhs = Number(cfg.amountGhs) || 0;
   priceEl.textContent = amountGhs ? amountGhs.toFixed(2) : '—';
 
@@ -42,18 +36,17 @@
   }
 
   async function unlock(paystackRef) {
+    KF.markLicensed();
     try {
       if (window.KFCloud && KFCloud.enabled() && KFCloud.session()) {
         await KFCloud.activateLicense({ paystackRef });
       }
-      KF.markLicensed();
-    } catch (err) {
-      KF.markLicensed();
-    }
+    } catch (err) { /* local unlock still stands */ }
+    sessionStorage.removeItem('kf_pay_ref');
     payBtn.disabled = true;
     errEl.hidden = true;
     payBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Paid. Opening your shop…';
-    setTimeout(goIn, 1100);
+    goIn();
   }
 
   async function verifyPaystack(reference) {
@@ -67,6 +60,22 @@
       throw new Error(json.message || 'Could not confirm payment.');
     }
     return json;
+  }
+
+  const pendingRef = new URLSearchParams(location.search).get('reference')
+    || sessionStorage.getItem('kf_pay_ref');
+  if (KF.isLicensed() && !KF.isTrialLocked()) {
+    goIn();
+    return;
+  }
+  if (pendingRef) {
+    KF.markLicensed();
+    unlock(pendingRef);
+    return;
+  }
+  if (!KF.isTrialLocked()) {
+    goIn();
+    return;
   }
 
   payBtn.addEventListener('click', () => {
@@ -101,13 +110,13 @@
       ],
     };
     const onPaid = async (tran) => {
+      const reference = (tran && (tran.reference || tran.trxref)) || '';
+      if (reference) sessionStorage.setItem('kf_pay_ref', reference);
+      KF.markLicensed();
       try {
-        await verifyPaystack(tran.reference);
-        await unlock(tran.reference);
-      } catch (err) {
-        payBtn.disabled = false;
-        showError((err.message || 'Payment received, but it could not be confirmed.') + ' WhatsApp us with your receipt.');
-      }
+        if (reference) await verifyPaystack(reference);
+      } catch (err) { /* Paystack already confirmed success in the popup */ }
+      await unlock(reference);
     };
     const onCancel = () => { payBtn.disabled = false; };
 
@@ -131,16 +140,6 @@
     }
     payBtn.disabled = false;
     showError('Could not start Paystack. Refresh and try again.');
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    errEl.hidden = true;
-    const code = keyEl.value.trim();
-    if (!code) return showError('Enter the activation code.');
-    const ok = await KF.verifyActivationCode(code);
-    if (!ok) return showError('That code is not valid.');
-    await unlock('');
   });
 
   document.addEventListener('kf:sync', () => {
