@@ -2370,3 +2370,91 @@ body.scan-lock { overflow: hidden; }
   .tour-hand, .tour-hand.down, .tour-hand.from-left { animation: none; }
   .tour-spot { transition: none; }
 }
+
+/* ===== Public homepage (SEO) ===== */
+.home-body {
+  min-height: 100vh;
+  background: linear-gradient(165deg, #0f172a 0%, #1e1b8f 48%, #1d4ed8 100%);
+  color: #f8fafc;
+}
+.home-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 22px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.home-brand {
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  font-size: 18px;
+}
+.home-brand span { color: #fde68a; }
+.home-brand i { color: #f26b1d; margin-right: 6px; }
+.home-nav nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.home-cta {
+  background: #f26b1d;
+  color: #fff;
+  padding: 9px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.home-cta-lg { padding: 12px 18px; font-size: 16px; }
+.home-ghost {
+  border: 1px solid rgba(255,255,255,0.35);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+.home-hero, .home-features, .home-foot {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 22px;
+}
+.home-kicker {
+  color: #fde68a;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+  margin: 0 0 10px;
+}
+.home-hero h1 {
+  font-size: clamp(28px, 5vw, 42px);
+  line-height: 1.15;
+  margin: 0 0 14px;
+}
+.home-lead { color: #e2e8f0; font-size: 18px; max-width: 640px; }
+.home-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.home-features h2 { margin: 0 0 16px; }
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+}
+.home-grid article {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  padding: 16px;
+}
+.home-grid h3 { margin: 0 0 8px; }
+.home-grid p { margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.5; }
+.home-foot {
+  color: #cbd5e1;
+  font-size: 13px;
+  border-top: 1px solid rgba(255,255,255,0.12);
+}
+.home-foot a { text-decoration: underline; }
+@media (max-width: 640px) {
+  .home-nav { flex-wrap: wrap; }
+  .home-nav nav a:not(.home-cta) { display: none; }
+}

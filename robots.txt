@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+Allow: /index.html
+Allow: /login.html
+Disallow: /dashboard.html
+Disallow: /pos.html
+Disallow: /products.html
+Disallow: /categories.html
+Disallow: /suppliers.html
+Disallow: /staff.html
+Disallow: /users.html
+Disallow: /report.html
+Disallow: /notifications.html
+Disallow: /help.html
+Disallow: /contact.html
+Disallow: /locked.html
+Disallow: /setup.html
+
+Sitemap: https://kashflow-online-pos.netlify.app/sitemap.xml
