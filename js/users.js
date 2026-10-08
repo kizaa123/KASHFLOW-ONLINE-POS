@@ -171,7 +171,7 @@
   f.username.addEventListener('input', () => { usernameTouched = true; });
   f.staff.addEventListener('change', () => applyStaffToForm(selectedStaff(), !usernameTouched));
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errEl.hidden = true;
     const username = f.username.value.trim().toLowerCase();
@@ -220,10 +220,17 @@
       }
       KFUI.toast('Account updated.');
     } else {
+      if (window.KFCloud && KFCloud.enabled()) {
+        try {
+          await KFCloud.provisionUser(username, password, role);
+        } catch (err) {
+          return showError(err.message || 'Could not create the online login.');
+        }
+      }
       list.push({
         id: KF.nextId(list),
         username,
-        password,
+        password: (window.KFCloud && KFCloud.enabled()) ? '' : password,
         role,
         staffId: staff ? staff.id : null,
         displayName: staff ? staff.name : username,
@@ -269,5 +276,6 @@
     }
   });
 
+  document.addEventListener('kf:sync', render);
   render();
 })();

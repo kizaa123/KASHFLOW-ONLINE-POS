@@ -101,5 +101,6 @@
     KFUI.toast('Notifications cleared.', 'error');
   });
 
+  document.addEventListener('kf:sync', render);
   render();
 })();

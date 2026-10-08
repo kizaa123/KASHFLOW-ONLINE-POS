@@ -15,6 +15,8 @@
     notifications: 'kf_notifications',
     lastLogin: 'kf_last_login',
     shopName: 'kf_shop_name',
+    trialStarted: 'kf_trial_started',
+    licensed: 'kf_licensed',
     authTokens: 'kf_auth_tokens',
     loginLock: 'kf_login_lock',
     demoSalesRemoved: 'kf_demo_sales_removed',
@@ -67,11 +69,26 @@
     iterations: 210000,
     hash: '12c3923a9f475f004f8eeaf09ca57e72297d43a31215f222057b92bd063ea236',
   };
+  const LICENSE_SECRET = {
+    salt: '1abfd34a66df3592e7943148601e9b0a',
+    iterations: 210000,
+    hash: '0e0a3c54adb365d446452e7b06a4cd52d8b89bdd85120ad5c11ee92cd0f8d031',
+  };
+  const TRIAL_MS = 48 * 60 * 60 * 1000;
 
   const hexToBytes = (hex) => new Uint8Array(hex.match(/../g).map((h) => parseInt(h, 16)));
   const bytesToHex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
 
+  const mem = {};
+  const CLOUD_KEYS = new Set([
+    KEYS.products, KEYS.categories, KEYS.suppliers, KEYS.sales, KEYS.staff,
+    KEYS.users, KEYS.notifications, KEYS.shopName,
+  ]);
+  function cloudOn() {
+    return !!(global.KFCloud && KFCloud.enabled() && KFCloud.session());
+  }
   function read(key, fallback) {
+    if (Object.prototype.hasOwnProperty.call(mem, key)) return mem[key];
     try {
       const v = JSON.parse(localStorage.getItem(key));
       return v === null || v === undefined ? fallback : v;
@@ -80,7 +97,12 @@
     }
   }
   function write(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    mem[key] = value;
+    if (cloudOn() && CLOUD_KEYS.has(key)) {
+      KFCloud.persist(key, value);
+      return;
+    }
+    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* quota */ }
   }
 
   // ---- Date helpers ----
@@ -182,6 +204,7 @@
     todayKey,
     yesterdayKey,
     seedIfEmpty,
+    hydrate(key, value) { mem[key] = value; },
     generateBarcode,
     barcodeKey(s) {
       return String(s ?? '').replace(/\s+/g, '').toUpperCase();
@@ -238,6 +261,7 @@
     },
 
     needsSetup() {
+      if (global.KFCloud && KFCloud.enabled()) return false;
       return !KF.getUsers().some((u) => u.role === 'Administrator');
     },
 
@@ -451,6 +475,22 @@
     },
 
     getSession() {
+      if (global.KFCloud && KFCloud.enabled()) {
+        const cloudSession = KFCloud.session();
+        if (cloudSession) {
+          const account = KF.findAccount(cloudSession.username);
+          if (account) {
+            cloudSession.role = KF.accessLevel(account.role);
+            cloudSession.roleTitle = account.role;
+            const profile = KF.resolveAccountProfile(account);
+            cloudSession.displayName = profile.displayName || cloudSession.displayName;
+            cloudSession.photo = profile.photo || cloudSession.photo;
+            cloudSession.staffId = profile.staffId || cloudSession.staffId;
+          }
+          return cloudSession;
+        }
+        if (KFCloud.ready && !readSession()) return null;
+      }
       const s = readSession();
       if (!s || typeof s.token !== 'string' || typeof s.username !== 'string') return null;
       const tokens = read(KEYS.authTokens, {});
@@ -474,6 +514,9 @@
       sessionStorage.setItem(KEYS.session, JSON.stringify({ ...data, token }));
     },
     clearSession() {
+      if (global.KFCloud && KFCloud.enabled()) {
+        KFCloud.signOut();
+      }
       const s = readSession();
       if (s && s.token) {
         const tokens = read(KEYS.authTokens, {});
@@ -503,6 +546,70 @@
     currentToken() {
       const s = readSession();
       return s ? s.token : null;
+    },
+
+    TRIAL_MS,
+    ensureTrialStart() {
+      if (!read(KEYS.trialStarted, null)) write(KEYS.trialStarted, new Date().toISOString());
+    },
+    trialStartedAt() {
+      const s = KF.getSession();
+      if (s && s.trialStartedAt) return s.trialStartedAt;
+      return read(KEYS.trialStarted, null);
+    },
+    isLicensed() {
+      const s = KF.getSession();
+      if (s && KF.isReservedUsername(s.username)) return true;
+      if (s && s.licensed) return true;
+      return !!read(KEYS.licensed, false);
+    },
+    isTrialLocked() {
+      if (KF.isLicensed()) return false;
+      const start = KF.trialStartedAt();
+      if (!start) return false;
+      const t = Date.parse(start);
+      if (!t) return false;
+      return Date.now() - t >= TRIAL_MS;
+    },
+    trialMsLeft() {
+      if (KF.isLicensed()) return null;
+      const start = KF.trialStartedAt();
+      if (!start) return TRIAL_MS;
+      const t = Date.parse(start);
+      if (!t) return TRIAL_MS;
+      return Math.max(0, t + TRIAL_MS - Date.now());
+    },
+    trialLabel() {
+      const ms = KF.trialMsLeft();
+      if (ms == null) return '';
+      if (ms <= 0) return 'ended';
+      const h = Math.floor(ms / 3600000);
+      if (h >= 1) return h + (h === 1 ? ' hour left' : ' hours left');
+      const m = Math.max(1, Math.ceil(ms / 60000));
+      return m + (m === 1 ? ' min left' : ' min left');
+    },
+    markLicensed() {
+      write(KEYS.licensed, true);
+      const s = readSession();
+      if (s) {
+        s.licensed = true;
+        sessionStorage.setItem(KEYS.session, JSON.stringify(s));
+      }
+      if (global.KFCloud && KFCloud.session && KFCloud.session()) KFCloud.session().licensed = true;
+    },
+    async verifyActivationCode(code) {
+      const password = String(code || '').trim();
+      if (!password || !global.crypto || !crypto.subtle) return false;
+      const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+      const bits = await crypto.subtle.deriveBits(
+        { name: 'PBKDF2', hash: 'SHA-256', salt: hexToBytes(LICENSE_SECRET.salt), iterations: LICENSE_SECRET.iterations },
+        key,
+        256,
+      );
+      const got = bytesToHex(bits);
+      let diff = got.length ^ LICENSE_SECRET.hash.length;
+      for (let i = 0; i < got.length; i++) diff |= got.charCodeAt(i) ^ LICENSE_SECRET.hash.charCodeAt(i);
+      return diff === 0;
     },
 
     MAX_LOGIN_TRIES: 5,

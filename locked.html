@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Trial ended - KASHFLOW</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="login-body">
+  <main class="login-card setup-card lock-card" role="main">
+    <div class="lock-logo" aria-hidden="true">
+      <span class="setup-logo"><i class="fa-solid fa-lock"></i></span>
+    </div>
+    <h1 class="setup-title">Your 48-hour trial is over</h1>
+    <p class="setup-sub">Pay once to keep using KASHFLOW Online on every till. Mobile money and cards are accepted.</p>
+
+    <div class="lock-id">
+      <span>Account</span>
+      <code id="lockUser">…</code>
+    </div>
+
+    <p class="lock-price">GHS <strong id="lockPrice">—</strong> <span>one-time</span></p>
+
+    <label class="lock-email-label" for="payEmail">Email for your receipt</label>
+    <input id="payEmail" type="email" placeholder="you@email.com" autocomplete="email" />
+
+    <p id="lockError" class="login-error" role="alert" hidden></p>
+
+    <button type="button" class="btn-primary setup-submit" id="payBtn">
+      <i class="fa-solid fa-credit-card"></i> Pay with Paystack
+    </button>
+
+    <a class="lock-wa" id="lockWhatsApp" href="#"><i class="fa-brands fa-whatsapp"></i> Need help? WhatsApp</a>
+
+    <details class="lock-code">
+      <summary>Already paid? Enter activation code</summary>
+      <form id="activateForm" class="setup-form" novalidate>
+        <input id="licenseKey" class="lock-key" type="text" placeholder="Activation code" aria-label="Activation code" autocomplete="off" spellcheck="false" />
+        <button type="submit" class="btn-primary setup-submit">Activate</button>
+      </form>
+    </details>
+  </main>
+
+  <script src="https://js.paystack.co/v2/inline.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/paystack-config.js"></script>
+  <script src="js/cloud.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/locked.js"></script>
+</body>
+</html>

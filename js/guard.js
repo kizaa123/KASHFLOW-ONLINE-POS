@@ -3,6 +3,7 @@
 (function () {
   const CASHIER_PAGES = ['pos', 'help', 'contact', 'notifications'];
   const page = (location.pathname.split('/').pop() || '').replace(/\.html$/, '') || 'dashboard';
+  document.documentElement.style.visibility = 'hidden';
 
   function lockOut(target) {
     document.documentElement.style.display = 'none';
@@ -14,13 +15,37 @@
     if (!session) {
       sessionStorage.removeItem(KF.KEYS.session);
       lockOut('login.html');
-      return;
+      return false;
     }
-    if (session.role !== 'admin' && !CASHIER_PAGES.includes(page)) lockOut('pos.html');
+    if (page === 'locked') {
+      if (!KF.isTrialLocked()) {
+        lockOut(session.role === 'admin' ? 'dashboard.html' : 'pos.html');
+        return false;
+      }
+      document.documentElement.style.visibility = '';
+      return true;
+    }
+    if (KF.isTrialLocked()) {
+      lockOut('locked.html');
+      return false;
+    }
+    if (session.role !== 'admin' && !CASHIER_PAGES.includes(page)) {
+      lockOut('pos.html');
+      return false;
+    }
+    document.documentElement.style.visibility = '';
+    return true;
   }
 
-  check();
-  KF.setZoom(KF.getZoom());
+  async function start() {
+    try {
+      if (window.KFCloud && KFCloud.enabled()) await KFCloud.ready();
+    } catch (e) { /* continue */ }
+    if (!check()) return;
+    KF.setZoom(KF.getZoom());
+  }
+
+  start();
   window.addEventListener('pageshow', (e) => { if (e.persisted) check(); });
   window.addEventListener('storage', (e) => {
     if (e.key === KF.KEYS.authTokens || e.key === KF.KEYS.users || e.key === null) check();

@@ -96,6 +96,7 @@
   renderLowStock();
 
   document.addEventListener('kf:themechange', renderChart);
+  document.addEventListener('kf:sync', () => { renderStats(); renderChart(); renderLowStock(); });
 
   // RESET: wipe shop data, keep the signed-in login account.
   const resetBtn = document.getElementById('resetBtn');

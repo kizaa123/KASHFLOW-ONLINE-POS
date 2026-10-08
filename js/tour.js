@@ -10,7 +10,7 @@
     {
       target: '#editProfileBtn',
       title: 'Start here',
-      text: 'Tap <strong>edit</strong> to add your photo and your <strong>shop name</strong>. The shop name prints at the top of every receipt and report.',
+      text: 'Tap your <strong>profile</strong> at the bottom of the menu to add a photo. You can also set the shop name for receipts and reports.',
     },
     {
       target: '.nav-link[href="categories.html"]',
@@ -25,7 +25,7 @@
     {
       target: '.nav-link[href="staff.html"]',
       title: 'Staff',
-      text: 'Add the people who work in the shop. Tick <em>Create a login account</em> to give a cashier their own username and password.',
+      text: 'Add the people who work here. Tick <em>Create a login account</em> (or use User Accounts) so each cashier can sign in on any till and sell your products.',
     },
     {
       target: '.nav-link[href="pos.html"]',

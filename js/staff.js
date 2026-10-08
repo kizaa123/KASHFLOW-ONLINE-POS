@@ -202,7 +202,7 @@
     });
   }
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errEl.hidden = true;
     const name = f.name.value.trim();
@@ -250,11 +250,15 @@
     KF.syncStaffProfileToUsers(record);
 
     if (loginUser) {
+      if (window.KFCloud && KFCloud.enabled()) {
+        try { await KFCloud.provisionUser(loginUser.username, loginUser.password, role); }
+        catch (err) { return showError(err.message || 'Could not create the online login.'); }
+      }
       const users = KF.getUsers();
       users.push({
         id: KF.nextId(users),
         username: loginUser.username,
-        password: loginUser.password,
+        password: (window.KFCloud && KFCloud.enabled()) ? '' : loginUser.password,
         role,
         staffId,
         displayName: name,
@@ -295,5 +299,6 @@
     }
   });
 
+  document.addEventListener('kf:sync', render);
   render();
 })();

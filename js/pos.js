@@ -440,6 +440,7 @@
     if (e.key === KF.KEYS.products || e.key === KF.KEYS.categories) { renderChips(); renderGrid(); renderCart(); }
   });
 
+  document.addEventListener('kf:sync', () => { renderChips(); renderGrid(); renderCart(); });
   renderChips();
   renderGrid();
   renderCart();

@@ -19,25 +19,23 @@
       cat: 'start',
       q: 'How do I start using the system?',
       a: `
-        <p>Use KASHFLOW in this order the first time you set up a shop:</p>
+        <p>One business, many tills. The owner registers once. Cashiers do not register themselves.</p>
         <ol>
-          <li>On a fresh computer, the welcome screen asks for your <strong>business name</strong> and Administrator username/password. That opens a live empty shop — no sample products.</li>
-          <li>Open <strong>Categories</strong> and add the groups you sell (for example Beverages, Snacks).</li>
-          <li>Open <strong>Suppliers</strong> and add the people or companies you buy from (optional records — you do not pick a supplier on the product form).</li>
-          <li>Open <strong>Products</strong> and load every item with its price, cost, stock quantity and a photo if you have one.</li>
-          <li>Open <strong>Staff Management</strong> and <strong>User Accounts</strong> if other people will also use the computer.</li>
-          <li>Go to <strong>POS</strong> and make a sale. Check the <strong>Dashboard</strong> and <strong>Report</strong> afterwards so you can see the sale landed.</li>
+          <li>On the login page the owner taps <strong>Create account</strong> and sets a username and password. Other businesses use the same page — each owner gets their own shop.</li>
+          <li>On <strong>User Accounts</strong> (or Staff Management), the owner creates a login for each cashier.</li>
+          <li>The owner loads <strong>Categories</strong> and <strong>Products</strong> (prices, stock, barcodes, photos).</li>
+          <li>Each cashier signs in on any computer with that username and password, chooses <em>Login As → Cashier</em>, and sells on <strong>POS</strong>. Stock and sales are the same shop for everyone.</li>
         </ol>
-        <p>The shop starts empty. Add your real categories, suppliers and products before you sell.</p>`,
+        <p>The catalog starts empty. Add your real products before you sell.</p>
+        <p>The online system includes a <strong>48-hour free trial</strong> from the moment the owner account is created. After that it locks until you pay with <strong>Paystack</strong> (mobile money or card). WhatsApp 053 180 6381 if you need help.</p>`
     },
     {
       id: 'first-login',
       cat: 'start',
       q: 'What username and password do I use the first time?',
       a: `
-        <p>There are no ready-made passwords. The first time KASHFLOW opens on a computer, you enter the <strong>business name</strong> and create the Administrator username and password. The shop then opens live and empty.</p>
-        <p>You are logged in straight away, and a pointing hand walks you through the menu. Afterwards, log in with that same username and password and choose <em>Login As → Administrator</em>.</p>
-        <p>To give a cashier their own login, add them on <strong>Staff Management</strong> (tick <em>Create a login account</em>) or on <strong>User Accounts</strong>.</p>`,
+        <p>There are no ready-made passwords. On the login page tap <strong>Create account</strong>, choose a username and password, and you are logged in straight away. Each client creates their own owner account this way.</p>
+        <p>Afterwards the owner signs in with that same username and password and chooses <em>Login As → Administrator</em>. Cashiers use the usernames the owner created on <strong>User Accounts</strong>, with <em>Login As → Cashier</em>.</p>`
     },
     {
       id: 'replay-guide',
@@ -230,7 +228,7 @@
           <li>On <strong>Staff Management</strong>, add the person (with their photo) and tick <em>Create a login account</em>. Set a username, a password of at least 6 characters, and save.</li>
           <li>Or open <strong>User Accounts</strong> → add an account, choose that staff member, then set username, password and role <strong>Cashier</strong>.</li>
         </ul>
-        <p>They log in with those details and choose <em>Login As → Cashier</em>. Their staff photo shows on the sidebar. Usernames must be unique and use letters, numbers, dots, underscores or hyphens (at least 3 characters).</p>`,
+        <p>Give them that username and password. They sign in on any computer (choose <em>Login As → Cashier</em>) and sell the products you uploaded. They do not create their own shop. Usernames must be unique and use letters, numbers, dots, underscores or hyphens (at least 3 characters).</p>`
     },
     {
       id: 'delete-account',

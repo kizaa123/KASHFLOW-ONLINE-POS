@@ -774,6 +774,7 @@
   document.getElementById('pdfBtn').addEventListener('click', exportPdf);
 
   document.addEventListener('kf:themechange', () => { chartsDirty = true; if (tab === 'visual') renderCharts(); });
+  document.addEventListener('kf:sync', apply);
   window.addEventListener('storage', (e) => { if (e.key === KF.KEYS.sales) apply(); });
 
   fillFilters();

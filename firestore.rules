@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function memberRole(shopId) {
+      return get(/databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid)).data.role;
+    }
+    function isMember(shopId) {
+      return signedIn() && exists(/databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid));
+    }
+    function isAdmin(shopId) {
+      return isMember(shopId) && memberRole(shopId) == 'Administrator';
+    }
+
+    match /shopIndex/{code} {
+      allow read: if true;
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+
+    match /accounts/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn();
+      allow update, delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /shops/{shopId} {
+      allow read: if isMember(shopId);
+      allow create: if signedIn();
+      allow update: if isAdmin(shopId);
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if isMember(shopId);
+        allow write: if isAdmin(shopId) || (signedIn() && request.auth.uid == uid && request.method == 'create');
+      }
+      match /logins/{username} {
+        allow read: if true;
+        allow write: if isAdmin(shopId) || (signedIn() && request.method == 'create');
+      }
+      match /items/{col}/rows/{docId} {
+        allow read: if isMember(shopId);
+        allow write: if isMember(shopId);
+      }
+    }
+  }
+}

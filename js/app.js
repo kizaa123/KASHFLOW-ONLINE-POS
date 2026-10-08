@@ -41,16 +41,25 @@
     aside.className = 'sidebar';
     aside.innerHTML = `
       <div class="sidebar-brand">
-        <div class="avatar" id="sidebarAvatar" title="Profile">${safePhoto(session.photo) ? `<img src="${safePhoto(session.photo)}" alt="" />` : '<i class="fa-solid fa-user-shield"></i>'}</div>
-        <button type="button" id="editProfileBtn" class="sidebar-edit">edit</button>
-        <h2>${esc(session.displayName || 'System Admin')}</h2>
-        ${session.roleTitle ? `<p class="sidebar-role">${esc(session.roleTitle)}</p>` : ''}
+        <p class="sidebar-shop">${esc(KF.getShopName())}</p>
+        ${session.shops && session.shops.length > 1 && session.role === 'admin' ? `<label class="shop-switch"><span>Branch</span><select id="shopSwitch">${session.shops.map((sh) => `<option value="${esc(sh.id)}"${sh.id === session.shopId ? ' selected' : ''}>${esc(sh.name)}</option>`).join('')}</select></label>` : ''}
+        ${session.role === 'admin' && window.KFCloud && KFCloud.enabled() ? '<button type="button" id="addShopBtn" class="sidebar-edit">Add a branch</button>' : ''}
       </div>
       <nav class="nav">
         ${navItems
           .map((n) => `<a class="nav-link${n.href.replace('.html', '') === current ? ' active' : ''}" href="${n.href}" title="${n.label}"><i class="fa-solid ${n.icon}"></i><span class="nav-label"> ${n.label}</span></a>`)
           .join('')}
       </nav>
+      <button type="button" id="editProfileBtn" class="sidebar-user" title="Edit profile">
+        <span class="sidebar-user-row">
+          <span class="avatar" id="sidebarAvatar">${safePhoto(session.photo) ? `<img src="${safePhoto(session.photo)}" alt="" />` : '<i class="fa-solid fa-user"></i>'}</span>
+          <span class="sidebar-user-meta">
+            <span class="sidebar-username">${esc(session.username || session.displayName || '')}</span>
+            ${session.roleTitle ? `<span class="sidebar-role">${esc(session.roleTitle)}</span>` : ''}
+          </span>
+        </span>
+      </button>
+      ${!KF.isLicensed() ? `<p class="sidebar-trial"><i class="fa-regular fa-clock"></i> Trial · ${esc(KF.trialLabel())}</p>` : ''}
       <div class="sidebar-clock" aria-live="off">
         <span class="clock-time" id="clockTime">--:--:--</span>
         <span class="clock-date" id="clockDate"></span>
@@ -152,6 +161,36 @@
       window.location.replace('login.html');
     });
   }
+
+  const shopSwitch = document.getElementById('shopSwitch');
+  if (shopSwitch) {
+    shopSwitch.addEventListener('change', async () => {
+      try {
+        await KFCloud.switchShop(shopSwitch.value);
+        window.location.reload();
+      } catch (err) {
+        KFUI.toast(err.message || 'Could not switch shop.', 'error');
+      }
+    });
+  }
+  const addShopBtn = document.getElementById('addShopBtn');
+  if (addShopBtn) {
+    addShopBtn.addEventListener('click', async () => {
+      const name = window.prompt('Name of the new shop / branch?');
+      if (!name || !name.trim()) return;
+      try {
+        const info = await KFCloud.addShop(name.trim());
+        KFUI.toast(`${info.name} is live.`);
+        window.location.reload();
+      } catch (err) {
+        KFUI.toast(err.message || 'Could not add shop.', 'error');
+      }
+    });
+  }
+
+  document.addEventListener('kf:sync', () => {
+    if (KFUI.refreshBell) KFUI.refreshBell();
+  });
 
   // ---- Shared UI helpers ----
   window.KFUI = window.KFUI || {};

@@ -155,5 +155,6 @@
     }
   });
 
+  document.addEventListener('kf:sync', render);
   render();
 })();
