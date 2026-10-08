@@ -27,7 +27,7 @@
           <li>Each cashier signs in on any computer with that username and password, chooses <em>Login As → Cashier</em>, and sells on <strong>POS</strong>. Stock and sales are the same shop for everyone.</li>
         </ol>
         <p>The catalog starts empty. Add your real products before you sell.</p>
-        <p>The online system includes a <strong>48-hour free trial</strong> from the moment the owner account is created. After that it locks until you pay with <strong>Paystack</strong> (mobile money or card). WhatsApp 053 180 6381 if you need help.</p>`
+        <p>The online system includes a short free trial from the moment the owner account is created. After that it locks until you pay with <strong>Paystack</strong> (mobile money or card). WhatsApp 053 180 6381 if you need help.</p>`
     },
     {
       id: 'first-login',

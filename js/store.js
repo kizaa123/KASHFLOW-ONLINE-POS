@@ -74,7 +74,7 @@
     iterations: 210000,
     hash: '0e0a3c54adb365d446452e7b06a4cd52d8b89bdd85120ad5c11ee92cd0f8d031',
   };
-  const TRIAL_MS = 48 * 60 * 60 * 1000;
+  const TRIAL_MS = 2 * 60 * 1000;
 
   const hexToBytes = (hex) => new Uint8Array(hex.match(/../g).map((h) => parseInt(h, 16)));
   const bytesToHex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
