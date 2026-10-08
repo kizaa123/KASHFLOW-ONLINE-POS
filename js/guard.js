@@ -13,7 +13,6 @@
   function check() {
     const session = KF.getSession();
     if (!session) {
-      sessionStorage.removeItem(KF.KEYS.session);
       lockOut('login.html');
       return false;
     }

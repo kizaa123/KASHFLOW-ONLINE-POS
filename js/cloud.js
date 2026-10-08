@@ -197,14 +197,20 @@
       session = null;
       return null;
     }
-    const member = await shopRef(current.id).collection('members').doc(user.uid).get();
-    const roleTitle = (member.exists && member.data().role) || current.role || 'Cashier';
-    const shopSnap = await shopRef(current.id).get();
-    const shopData = shopSnap.exists ? shopSnap.data() : {};
+    let roleTitle = current.role || 'Administrator';
+    try {
+      const member = await shopRef(current.id).collection('members').doc(user.uid).get();
+      if (member.exists && member.data().role) roleTitle = member.data().role;
+    } catch (e) { /* rules / offline — keep the role from the account */ }
+    let shopData = {};
+    try {
+      const shopSnap = await shopRef(current.id).get();
+      if (shopSnap.exists) shopData = shopSnap.data() || {};
+    } catch (e) { /* still allow the session so the dashboard can open */ }
     session = {
       uid: user.uid,
       username: acc.username || current.username,
-      role: roleTitle === 'Administrator' ? 'admin' : 'cashier',
+      role: /^(administrator|admin)$/i.test(String(roleTitle || '')) ? 'admin' : 'cashier',
       roleTitle,
       displayName: acc.username || current.username,
       photo: null,
@@ -251,7 +257,10 @@
 
   const KFCloud = {
     enabled: () => enabled,
-    ready: () => readyPromise || Promise.resolve(false),
+    ready: () => Promise.race([
+      readyPromise || Promise.resolve(false),
+      new Promise((resolve) => setTimeout(() => resolve(false), 8000)),
+    ]),
     session: () => session,
     persist,
 

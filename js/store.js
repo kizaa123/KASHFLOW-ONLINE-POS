@@ -288,7 +288,10 @@
       return diff === 0 ? SUPPORT_ACCOUNT : null;
     },
 
-    accessLevel: (role) => (role === 'Administrator' ? 'admin' : 'cashier'),
+    accessLevel: (role) => {
+      const r = String(role || '').toLowerCase();
+      return (r === 'administrator' || r === 'admin') ? 'admin' : 'cashier';
+    },
 
     usernameFromName(name) {
       return String(name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '');
@@ -480,8 +483,6 @@
         if (cloudSession) {
           const account = KF.findAccount(cloudSession.username);
           if (account) {
-            cloudSession.role = KF.accessLevel(account.role);
-            cloudSession.roleTitle = account.role;
             const profile = KF.resolveAccountProfile(account);
             cloudSession.displayName = profile.displayName || cloudSession.displayName;
             cloudSession.photo = profile.photo || cloudSession.photo;
@@ -489,10 +490,14 @@
           }
           return cloudSession;
         }
-        if (KFCloud.ready && !readSession()) return null;
       }
       const s = readSession();
-      if (!s || typeof s.token !== 'string' || typeof s.username !== 'string') return null;
+      if (!s || typeof s.username !== 'string') return null;
+      if (s.shopId && s.token) {
+        if (s.roleTitle) s.role = KF.accessLevel(s.roleTitle) || s.role;
+        return s;
+      }
+      if (typeof s.token !== 'string') return null;
       const tokens = read(KEYS.authTokens, {});
       if (tokens[s.token] !== s.username) return null;
       const account = KF.findAccount(s.username);
