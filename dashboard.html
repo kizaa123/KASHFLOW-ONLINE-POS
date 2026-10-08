@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Dashboard - KASHFLOW</title>
+  <script>
+    // Apply the saved theme before the page paints so there is no flash.
+    (function () {
+      try {
+        var t = JSON.parse(localStorage.getItem('kf_theme')) || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-gauge-high"></i> Dashboard Overview</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+        <button id="notifBtn" class="icon-btn notif" title="Low stock alerts" aria-label="Low stock alerts">
+          <i class="fa-solid fa-bell"></i>
+          <span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="stat-grid">
+      <article class="stat-card blue">
+        <i class="fa-solid fa-cart-shopping"></i>
+        <div><span>Today's Sale</span><strong id="statTodaySale">GH₵ 0.00</strong></div>
+      </article>
+      <article class="stat-card green">
+        <i class="fa-solid fa-box"></i>
+        <div><span>Total Products</span><strong id="statProducts">0</strong></div>
+      </article>
+      <article class="stat-card orange">
+        <i class="fa-solid fa-list"></i>
+        <div><span>Categories</span><strong id="statCategories">0</strong></div>
+      </article>
+      <article class="stat-card purple">
+        <i class="fa-solid fa-truck"></i>
+        <div><span>Suppliers</span><strong id="statSuppliers">0</strong></div>
+      </article>
+      <article class="stat-card cyan">
+        <i class="fa-solid fa-money-bill-trend-up"></i>
+        <div><span>Total Profit</span><strong id="statProfit">GH₵ 0.00</strong></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h3 class="panel-title"><i class="fa-solid fa-chart-column"></i> Sales Trend Analysis</h3>
+      <div class="chart-box">
+        <p class="chart-heading">
+          <i class="fa-regular fa-calendar"></i>
+          <span class="today">Today (<span id="chartToday">GH₵0.00</span>)</span>
+          <em>vs.</em>
+          <span class="yesterday">Yesterday (<span id="chartYesterday">GH₵0.00</span>)</span>
+          <small>(Revenue GH₵)</small>
+        </p>
+        <div class="chart-wrap"><canvas id="salesChart"></canvas></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3 class="panel-title danger"><i class="fa-solid fa-triangle-exclamation"></i> Low Stock Alerts</h3>
+      <ul id="lowStockList" class="low-stock-list"></ul>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <div id="resetModal" class="modal-backdrop" hidden>
+    <div class="modal modal-sm" role="dialog" aria-labelledby="resetTitle" aria-modal="true">
+      <div class="modal-head">
+        <h3 id="resetTitle"><i class="fa-solid fa-triangle-exclamation"></i> Reset the system?</h3>
+        <button type="button" class="modal-close" id="resetClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>This will delete <strong>all shop data</strong>: products, categories, suppliers, staff, sales, reports and notifications.</p>
+        <p>Your login account <strong id="resetKeepName">this account</strong> will stay, so you can keep using the system.</p>
+        <p class="muted">This cannot be undone.</p>
+        <div class="reset-actions">
+          <button type="button" id="resetCancel" class="btn-grey">Cancel</button>
+          <button type="button" id="resetConfirm" class="btn-red">RESET</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/tour.js"></script>
+</body>
+</html>

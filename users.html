@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>User Accounts - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-user-gear"></i> User Accounts</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Low stock alerts" aria-label="Low stock alerts">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="toolbar centered">
+      <div class="search-group">
+        <button class="btn-purple" type="button" id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i><span class="btn-text">Search</span></button>
+        <input id="searchInput" type="search" placeholder="Search item here....." autocomplete="off" enterkeyhint="search" />
+      </div>
+      <div class="filter-wrap">
+        <button id="filterBtn" class="btn-purple" type="button"><i class="fa-solid fa-filter"></i> Filter</button>
+        <div id="filterMenu" class="dropdown" hidden>
+          <button type="button" data-sort="newest" class="active">Newest first</button>
+          <button type="button" data-sort="oldest">Oldest first</button>
+          <button type="button" data-sort="az">Username A → Z</button>
+          <button type="button" data-sort="za">Username Z → A</button>
+          <button type="button" data-sort="role">By role</button>
+        </div>
+      </div>
+      <button id="addUserBtn" class="btn-purple" type="button"><i class="fa-solid fa-user-plus"></i> Add<span class="btn-extra"> Account</span></button>
+    </div>
+
+    <section class="panel table-panel">
+      <div class="table-wrap">
+        <table class="data-table compact">
+          <thead>
+            <tr>
+              <th><i class="fa-solid fa-hashtag" style="color:#f59e0b"></i> No.</th>
+              <th><i class="fa-solid fa-user" style="color:#f59e0b"></i> Username</th>
+              <th><i class="fa-solid fa-key" style="color:#f59e0b"></i> Password</th>
+              <th><i class="fa-solid fa-id-badge" style="color:#f59e0b"></i> Role</th>
+              <th><i class="fa-regular fa-clock" style="color:#f59e0b"></i> Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="userBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="empty-state" hidden><i class="fa-solid fa-user-gear"></i> No user accounts yet. Click "Add Account" to create one.</p>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <!-- Add / Edit account modal -->
+  <div id="userModal" class="modal-backdrop" hidden>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-head">
+        <h3 id="modalTitle"><i class="fa-solid fa-user-plus"></i> New Account</h3>
+        <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </header>
+      <form id="userForm" class="modal-body" novalidate>
+        <input type="hidden" id="userId" />
+
+        <div class="field">
+          <label for="staffLink">Staff member</label>
+          <select id="staffLink">
+            <option value="">No staff linked</option>
+          </select>
+          <p class="field-hint">Link the person from Staff Management. Their profile photo shows on the sidebar when they log in.</p>
+          <div id="staffChip" class="staff-chip" hidden></div>
+        </div>
+
+        <div class="field">
+          <label for="username">Username</label>
+          <input id="username" type="text" placeholder="Enter username" autocomplete="off" required />
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="password-wrap">
+            <input id="password" type="password" placeholder="Enter password" autocomplete="new-password" required />
+            <button type="button" id="togglePassword" class="eye-btn" aria-label="Show password"><i class="fa-regular fa-eye"></i></button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="role">Role</label>
+          <select id="role" required>
+            <option value="Administrator">Administrator</option>
+            <option value="Cashier">Cashier</option>
+          </select>
+        </div>
+
+        <p id="formError" class="login-error" role="alert" hidden></p>
+        <button type="submit" id="saveBtn" class="btn-purple full"><i class="fa-solid fa-floppy-disk"></i> Save Account</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/users.js"></script>
+</body>
+</html>

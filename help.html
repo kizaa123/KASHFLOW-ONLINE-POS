@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Help Center - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-circle-question"></i> Help Center</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Notifications" aria-label="Notifications">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="help-intro panel">
+      <p>These are the questions people usually ask when they start using KASHFLOW. Tap a question to see the answer. You can also search or pick a topic below.</p>
+      <div class="help-search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="helpSearch" placeholder="Search a question… e.g. receipt, reset, password" />
+      </div>
+    </section>
+
+    <div class="chips help-chips" id="helpChips"></div>
+
+    <section class="faq-list" id="faqList"></section>
+    <p id="helpEmpty" class="empty-state panel" hidden><i class="fa-regular fa-folder-open"></i> No question matches that search. Try another word, or pick All.</p>
+
+    <section class="panel help-foot-note">
+      <p><i class="fa-solid fa-envelope"></i> Still stuck? Open <a href="contact.html">Contact Us</a> and send a message.</p>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/help.js"></script>
+</body>
+</html>

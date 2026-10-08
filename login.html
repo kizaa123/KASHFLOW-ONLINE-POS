@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Login - KASHFLOW</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="login-body">
+  <main class="login-card" role="main">
+    <div class="brand">
+      <i class="fa-solid fa-boxes-stacked brand-icon"></i>
+      <span class="brand-name">KASHFLOW</span>
+    </div>
+    <p class="brand-sub">Inventory Management System</p>
+
+    <form id="loginForm" class="login-form" novalidate>
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" placeholder="Enter username" autocomplete="username" required />
+
+      <label for="password">Password</label>
+      <div class="password-wrap">
+        <input id="password" name="password" type="password" placeholder="Enter password" autocomplete="current-password" required />
+        <button type="button" id="togglePassword" class="eye-btn" aria-label="Show password">
+          <i class="fa-regular fa-eye"></i>
+        </button>
+      </div>
+
+      <label for="role">Login As</label>
+      <select id="role" name="role">
+        <option value="admin">Administrator</option>
+        <option value="cashier">Cashier</option>
+      </select>
+
+      <p id="loginError" class="login-error" role="alert" hidden></p>
+
+      <button type="submit" class="btn-primary">Login</button>
+    </form>
+  </main>
+
+  <script src="js/store.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Staff Management - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-users"></i> Staff Management</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Low stock alerts" aria-label="Low stock alerts">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="toolbar centered">
+      <div class="search-group">
+        <button class="btn-purple" type="button" id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i><span class="btn-text">Search</span></button>
+        <input id="searchInput" type="search" placeholder="Search item here....." autocomplete="off" enterkeyhint="search" />
+      </div>
+      <div class="filter-wrap">
+        <button id="filterBtn" class="btn-purple" type="button"><i class="fa-solid fa-filter"></i> Filter</button>
+        <div id="filterMenu" class="dropdown" hidden>
+          <button type="button" data-sort="newest" class="active">Newest first</button>
+          <button type="button" data-sort="oldest">Oldest first</button>
+          <button type="button" data-sort="az">Name A → Z</button>
+          <button type="button" data-sort="za">Name Z → A</button>
+          <button type="button" data-sort="role">By role</button>
+        </div>
+      </div>
+      <button id="addStaffBtn" class="btn-purple" type="button"><i class="fa-solid fa-user-plus"></i> Add<span class="btn-extra"> Staff</span></button>
+    </div>
+
+    <section class="panel table-panel">
+      <div class="table-wrap">
+        <table class="data-table compact">
+          <thead>
+            <tr>
+              <th><i class="fa-solid fa-image-portrait" style="color:#f59e0b"></i> Profile</th>
+              <th><i class="fa-solid fa-user" style="color:#f59e0b"></i> Name</th>
+              <th><i class="fa-solid fa-phone" style="color:#f59e0b"></i> Phone Number</th>
+              <th><i class="fa-solid fa-id-badge" style="color:#f59e0b"></i> Role</th>
+              <th><i class="fa-regular fa-clock" style="color:#f59e0b"></i> Added</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="staffBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="empty-state" hidden><i class="fa-solid fa-users"></i> No staff found.</p>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <!-- Add / Edit staff modal -->
+  <div id="staffModal" class="modal-backdrop" hidden>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-head">
+        <h3 id="modalTitle"><i class="fa-solid fa-user-plus"></i> New Staff</h3>
+        <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </header>
+      <form id="staffForm" class="modal-body" novalidate>
+        <input type="hidden" id="staffId" />
+
+        <div class="field">
+          <label>Profile Picture</label>
+          <div class="image-field">
+            <button type="button" id="photoPreview" class="image-preview round" title="Click to choose a photo" aria-label="Choose profile picture">
+              <i class="fa-solid fa-user"></i>
+              <span class="hint">Add photo</span>
+            </button>
+            <input id="photoInput" type="file" accept="image/*" hidden />
+            <button type="button" id="removePhotoBtn" class="link-btn" hidden><i class="fa-solid fa-trash"></i> Remove photo</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="staffName">Full Name</label>
+          <input id="staffName" type="text" placeholder="e.g. Ama Mensah" required />
+        </div>
+
+        <div class="form-grid two">
+          <div class="field">
+            <label for="staffPhone">Phone Number</label>
+            <input id="staffPhone" type="tel" placeholder="e.g. 024 000 0000" required />
+          </div>
+          <div class="field">
+            <label for="staffRole">Role</label>
+            <select id="staffRole">
+              <option value="Administrator">Administrator</option>
+              <option value="Cashier">Cashier</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field" id="otherRoleField" hidden>
+          <label for="staffRoleOther">Specify Role</label>
+          <input id="staffRoleOther" type="text" placeholder="e.g. Store Keeper, Driver, Cleaner" />
+        </div>
+
+        <div class="field" id="createLoginBlock">
+          <label class="check-row">
+            <input id="createLogin" type="checkbox" />
+            Create a login account
+          </label>
+          <p class="field-hint" id="linkedLoginHint" hidden></p>
+          <div id="loginFields" class="login-extra" hidden>
+            <div class="field">
+              <label for="staffUsername">Username</label>
+              <input id="staffUsername" type="text" placeholder="e.g. ama.mensah" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="staffPassword">Password</label>
+              <div class="password-wrap">
+                <input id="staffPassword" type="password" placeholder="At least 6 characters" autocomplete="new-password" />
+                <button type="button" id="toggleStaffPassword" class="eye-btn" aria-label="Show password"><i class="fa-regular fa-eye"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p id="formError" class="login-error" role="alert" hidden></p>
+        <button type="submit" id="saveBtn" class="btn-purple full"><i class="fa-solid fa-floppy-disk"></i> Save Staff</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/staff.js"></script>
+</body>
+</html>

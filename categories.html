@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Categories - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-tags"></i> Categories</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Low stock alerts" aria-label="Low stock alerts">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="toolbar centered">
+      <div class="search-group">
+        <button class="btn-purple" type="button" id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i><span class="btn-text">Search</span></button>
+        <input id="searchInput" type="search" placeholder="Search item here....." autocomplete="off" enterkeyhint="search" />
+      </div>
+      <div class="filter-wrap">
+        <button id="filterBtn" class="btn-purple" type="button"><i class="fa-solid fa-filter"></i> Filter</button>
+        <div id="filterMenu" class="dropdown" hidden>
+          <button type="button" data-sort="newest" class="active">Newest first</button>
+          <button type="button" data-sort="oldest">Oldest first</button>
+          <button type="button" data-sort="az">Name A → Z</button>
+          <button type="button" data-sort="za">Name Z → A</button>
+        </div>
+      </div>
+      <button id="addCategoryBtn" class="btn-purple" type="button"><i class="fa-solid fa-plus"></i> Add<span class="btn-extra"> Category</span></button>
+    </div>
+
+    <section class="panel table-panel">
+      <div class="table-wrap">
+        <table class="data-table compact">
+          <thead>
+            <tr>
+              <th><i class="fa-solid fa-list-ol" style="color:#f59e0b"></i> No.</th>
+              <th><i class="fa-solid fa-tag" style="color:#f59e0b"></i> Category Name</th>
+              <th><i class="fa-solid fa-align-left" style="color:#f59e0b"></i> Description</th>
+              <th><i class="fa-regular fa-clock" style="color:#f59e0b"></i> Created</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="categoryBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="empty-state" hidden><i class="fa-solid fa-tags"></i> No categories found.</p>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <!-- Add / Edit category modal -->
+  <div id="categoryModal" class="modal-backdrop" hidden>
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-head">
+        <h3 id="modalTitle"><i class="fa-solid fa-circle-plus"></i> New Category</h3>
+        <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </header>
+      <form id="categoryForm" class="modal-body" novalidate>
+        <input type="hidden" id="categoryId" />
+        <div class="field">
+          <label for="categoryName">Category Name</label>
+          <input id="categoryName" type="text" placeholder="e.g. Drinks" required />
+        </div>
+        <div class="field">
+          <label for="categoryDesc">Description</label>
+          <textarea id="categoryDesc" rows="3" placeholder="What goes in this category?"></textarea>
+        </div>
+        <p id="formError" class="login-error" role="alert" hidden></p>
+        <button type="submit" id="saveBtn" class="btn-purple full"><i class="fa-solid fa-floppy-disk"></i> Save Category</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/categories.js"></script>
+</body>
+</html>

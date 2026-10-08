@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Products - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-box"></i> Products Inventory</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Low stock alerts" aria-label="Low stock alerts">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="toolbar centered">
+      <div class="search-group">
+        <button class="btn-purple" type="button" id="searchBtn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i><span class="btn-text">Search</span></button>
+        <input id="searchInput" type="search" placeholder="Search item here....." autocomplete="off" enterkeyhint="search" />
+      </div>
+      <div class="filter-wrap">
+        <button id="filterBtn" class="btn-purple" type="button"><i class="fa-solid fa-filter"></i> Filter</button>
+        <div id="filterMenu" class="dropdown" hidden>
+          <button type="button" data-sort="newest" class="active">Newest first</button>
+          <button type="button" data-sort="oldest">Oldest first</button>
+          <button type="button" data-sort="az">Name A → Z</button>
+          <button type="button" data-sort="za">Name Z → A</button>
+          <button type="button" data-sort="low">Low stock first</button>
+          <button type="button" data-sort="high">High stock first</button>
+          <button type="button" data-sort="price-asc">Price low → high</button>
+          <button type="button" data-sort="price-desc">Price high → low</button>
+        </div>
+      </div>
+      <button id="addProductBtn" class="btn-purple" type="button"><i class="fa-solid fa-plus"></i> Add<span class="btn-extra"> Product</span></button>
+    </div>
+
+    <section class="panel table-panel">
+      <div class="table-wrap">
+        <table class="data-table" id="productTable">
+          <thead>
+            <tr>
+              <th><i class="fa-solid fa-list" style="color:#f59e0b"></i> Product List</th>
+              <th><i class="fa-solid fa-tag" style="color:#f59e0b"></i> Barcode</th>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th><i class="fa-solid fa-coins" style="color:#f59e0b"></i> Price (GH <span style="color:#f59e0b">₵</span>)</th>
+              <th><i class="fa-solid fa-bars" style="color:#f59e0b"></i> Stock</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="productBody"></tbody>
+        </table>
+      </div>
+      <p id="emptyState" class="empty-state" hidden><i class="fa-solid fa-box-open"></i> No products found.</p>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <!-- Add / Edit product modal -->
+  <div id="productModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-head">
+        <h3 id="modalTitle"><i class="fa-solid fa-cart-plus"></i> New Product</h3>
+        <button type="button" class="modal-close" id="modalClose" aria-label="Close">&times;</button>
+      </header>
+
+      <form id="productForm" class="modal-body" novalidate>
+        <input type="hidden" id="productId" />
+
+        <div class="form-grid two">
+          <div class="field">
+            <label for="barcode">Barcode</label>
+            <div class="input-with-btn barcode-actions">
+              <input id="barcode" type="text" placeholder="Scan or type the barcode on the pack" required autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <button type="button" id="scanBarcodeBtn" class="gen-btn" title="Scan with camera" aria-label="Scan barcode with camera">
+                <i class="fa-solid fa-camera"></i>
+              </button>
+              <button type="button" id="genBarcodeBtn" class="gen-btn" title="Generate a shop code if the item has no barcode" aria-label="Generate barcode">
+                <i class="fa-solid fa-rotate"></i>
+              </button>
+            </div>
+            <p class="field-hint">Use the camera, a USB scanner, or type the number. Generate only if the pack has no barcode.</p>
+          </div>
+          <div class="field">
+            <label for="productName">Product Name</label>
+            <input id="productName" type="text" placeholder="Enter product name" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="productImage">Product Image</label>
+          <div class="image-field">
+            <button type="button" id="imagePreview" class="image-preview" title="Click to choose an image" aria-label="Choose product image">
+              <i class="fa-regular fa-image"></i>
+              <span class="hint">Click to add image</span>
+            </button>
+            <input id="productImage" type="file" accept="image/*" hidden />
+            <button type="button" id="removeImageBtn" class="link-btn" hidden><i class="fa-solid fa-trash"></i> Remove image</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" required></select>
+        </div>
+
+        <div class="form-grid two">
+          <div class="field">
+            <label for="costPrice">Cost Price</label>
+            <div class="input-prefix"><span>GH₵</span><input id="costPrice" type="number" min="0" step="0.01" placeholder="0.00" required /></div>
+          </div>
+          <div class="field">
+            <label for="sellPrice">Sell Price</label>
+            <div class="input-prefix"><span>GH₵</span><input id="sellPrice" type="number" min="0" step="0.01" placeholder="0.00" required /></div>
+          </div>
+        </div>
+
+        <div class="form-grid three">
+          <div class="field">
+            <label for="stockQty">Stock (qty)</label>
+            <input id="stockQty" type="number" min="0" step="1" placeholder="0" required />
+          </div>
+          <div class="field">
+            <label for="unit">Unit/Packaging</label>
+            <select id="unit">
+              <option value="single">Single</option>
+              <option value="packet">Packet</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="piecesPerPkt">Pieces/Pkt</label>
+            <input id="piecesPerPkt" type="number" min="1" step="1" placeholder="e.g. 24" value="1" disabled />
+          </div>
+        </div>
+
+        <p id="formError" class="login-error" role="alert" hidden></p>
+
+        <button type="submit" id="saveBtn" class="btn-purple full"><i class="fa-solid fa-floppy-disk"></i> Save Product</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/barcode.js"></script>
+  <script src="js/products.js"></script>
+</body>
+</html>

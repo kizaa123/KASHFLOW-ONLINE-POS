@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Contact Us - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-envelope"></i> Contact Us</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Notifications" aria-label="Notifications">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="contact-wrap">
+      <form id="contactForm" class="contact-card" novalidate>
+        <h2>Get in Touch</h2>
+
+        <div class="field">
+          <label for="contactName">Full Name</label>
+          <input id="contactName" type="text" placeholder="Enter your name" autocomplete="name" required />
+        </div>
+
+        <div class="field">
+          <label for="contactRole">Your Role</label>
+          <select id="contactRole" required>
+            <option value="">Select your role</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="contactMessage">Message</label>
+          <textarea id="contactMessage" placeholder="How can we help you?" required></textarea>
+        </div>
+
+        <p id="contactError" class="login-error contact-error" hidden></p>
+
+        <div class="contact-actions">
+          <button type="submit" class="btn-wa" data-channel="whatsapp"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+          <button type="submit" class="btn-sms" data-channel="sms"><i class="fa-solid fa-comment-sms"></i> SMS</button>
+        </div>
+      </form>
+    </div>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <script src="js/app.js"></script>
+  <script src="js/contact.js"></script>
+</body>
+</html>

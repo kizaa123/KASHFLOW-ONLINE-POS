@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Sales Report - KASHFLOW</title>
+  <script>
+    (function () {
+      try { document.documentElement.setAttribute('data-theme', JSON.parse(localStorage.getItem('kf_theme')) || 'dark'); }
+      catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/store.js"></script>
+  <script src="js/guard.js"></script>
+</head>
+<body class="app-body">
+  <aside id="sidebar"></aside>
+
+  <main class="content">
+    <header class="page-header">
+      <div>
+        <h1><i class="fa-solid fa-chart-line"></i> Sales Report</h1>
+        <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
+      </div>
+      <div class="header-actions">
+        <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+        <button id="notifBtn" class="icon-btn notif" title="Notifications" aria-label="Notifications">
+          <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Summary cards -->
+    <section class="report-stats">
+      <article class="report-stat purple">
+        <i class="fa-solid fa-money-bill-wave"></i>
+        <div><span>Total Revenue</span><strong id="rsRevenue">GH ₵ 0.00</strong></div>
+      </article>
+      <article class="report-stat green">
+        <i class="fa-solid fa-money-bill-trend-up"></i>
+        <div><span>Total Profit</span><strong id="rsProfit">GH ₵ 0.00</strong></div>
+      </article>
+      <article class="report-stat blue">
+        <i class="fa-solid fa-receipt"></i>
+        <div><span>Total Orders</span><strong id="rsOrders">0</strong><small id="rsItems" class="report-stat-sub">0 items sold</small></div>
+      </article>
+      <article class="report-stat orange">
+        <i class="fa-solid fa-trophy"></i>
+        <div><span>Top Selling Item</span><strong id="rsTop">—</strong></div>
+      </article>
+    </section>
+
+    <!-- Filters and export -->
+    <section class="panel report-filters">
+      <div class="report-filter-group">
+        <label><i class="fa-regular fa-calendar"></i> Date Range:</label>
+        <select id="rangeSelect">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="week">Last 7 Days</option>
+          <option value="month" selected>This Month</option>
+          <option value="lastMonth">Last Month</option>
+          <option value="year">This Year</option>
+          <option value="all">All Time</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <span id="customRange" class="report-custom" hidden>
+          <input type="date" id="fromDate" aria-label="From date" />
+          <span class="muted-small">to</span>
+          <input type="date" id="toDate" aria-label="To date" />
+        </span>
+      </div>
+      <div class="report-filter-group">
+        <label><i class="fa-solid fa-tag"></i> Category:</label>
+        <select id="categorySelect"><option value="all">All Categories</option></select>
+      </div>
+      <div class="report-filter-group">
+        <label><i class="fa-solid fa-user"></i> Cashier:</label>
+        <select id="cashierSelect"><option value="all">All Cashiers</option></select>
+      </div>
+      <div class="report-actions">
+        <button type="button" id="printBtn" class="btn-export print"><i class="fa-solid fa-print"></i> Print Report</button>
+        <button type="button" id="excelBtn" class="btn-export excel"><i class="fa-solid fa-file-excel"></i> Export to Excel</button>
+        <button type="button" id="pdfBtn" class="btn-export pdf"><i class="fa-solid fa-file-pdf"></i> Export to PDF</button>
+      </div>
+    </section>
+
+    <p id="periodLabel" class="report-period"></p>
+
+    <!-- Tabs -->
+    <nav class="report-tabs" id="reportTabs">
+      <button type="button" class="report-tab active" data-tab="visual"><i class="fa-solid fa-chart-pie"></i> Visual Trends</button>
+      <button type="button" class="report-tab" data-tab="data"><i class="fa-solid fa-table-list"></i> Detailed Data</button>
+    </nav>
+
+    <!-- Visual Trends -->
+    <section id="tabVisual" class="report-tab-panel">
+      <div class="report-charts">
+        <div class="panel report-chart">
+          <h3 class="panel-title"><i class="fa-solid fa-chart-area"></i> Revenue Over Time</h3>
+          <div class="report-chart-wrap"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="panel report-chart">
+          <h3 class="panel-title"><i class="fa-solid fa-chart-pie"></i> Sales by Category</h3>
+          <div class="report-chart-wrap"><canvas id="categoryChart"></canvas></div>
+        </div>
+      </div>
+      <div class="report-charts second">
+        <div class="panel report-chart">
+          <h3 class="panel-title"><i class="fa-solid fa-ranking-star"></i> Top Selling Items</h3>
+          <div class="report-chart-wrap short"><canvas id="topChart"></canvas></div>
+        </div>
+        <div class="panel report-chart">
+          <h3 class="panel-title"><i class="fa-solid fa-wallet"></i> Payment Methods</h3>
+          <table class="mini-table" id="paymentTable"><tbody></tbody></table>
+        </div>
+        <div class="panel report-chart">
+          <h3 class="panel-title"><i class="fa-solid fa-user-tie"></i> Sales by Cashier</h3>
+          <table class="mini-table" id="cashierTable"><tbody></tbody></table>
+        </div>
+      </div>
+      <p id="visualEmpty" class="empty-state panel" hidden><i class="fa-regular fa-folder-open"></i> No sales in this period.</p>
+    </section>
+
+    <!-- Detailed Data -->
+    <section id="tabData" class="report-tab-panel" hidden>
+      <div class="toolbar report-data-toolbar">
+        <div class="chips" id="viewChips">
+          <button type="button" class="chip active" data-view="lines">Items sold (by order)</button>
+          <button type="button" class="chip" data-view="items">Summary by item</button>
+        </div>
+        <div class="report-search">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="search" id="dataSearch" placeholder="Search item, order no. or cashier…" />
+        </div>
+        <span id="dataCount" class="muted-small"></span>
+      </div>
+      <section class="panel table-panel">
+        <div class="table-wrap">
+          <table class="data-table compact report-table" id="dataTable">
+            <thead></thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+          </table>
+        </div>
+        <p id="dataEmpty" class="empty-state" hidden><i class="fa-regular fa-folder-open"></i> No items sold match these filters.</p>
+      </section>
+    </section>
+
+    <footer id="appFooter"></footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
