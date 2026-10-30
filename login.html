@@ -25,8 +25,8 @@
     </div>
 
     <form id="loginForm" class="login-form" novalidate>
-      <label for="username">Username</label>
-      <input id="username" name="username" type="text" placeholder="Enter username" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+      <label for="username">Username or Gmail</label>
+      <input id="username" name="username" type="text" placeholder="Username or you@gmail.com" autocomplete="username email" autocapitalize="none" spellcheck="false" required />
 
       <label for="password">Password</label>
       <div class="password-wrap">
@@ -58,6 +58,15 @@
 
       <button type="submit" class="btn-primary" id="authSubmit">Login</button>
     </form>
+
+    <div id="googleAuthWrap" class="google-auth-wrap" hidden>
+      <p class="auth-divider"><span>or</span></p>
+      <button type="button" id="googleSignInBtn" class="btn-google">
+        <i class="fa-brands fa-google"></i> Continue with Google
+      </button>
+      <p id="googleEmailHint" class="auth-note" hidden></p>
+    </div>
+
     <p id="authNote" class="auth-note">Cashiers sign in here with the username the owner created. They do not create an account.</p>
   </main>
 

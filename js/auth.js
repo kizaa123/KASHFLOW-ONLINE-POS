@@ -22,6 +22,10 @@
   const noteEl = document.getElementById('authNote');
   const tabLogin = document.getElementById('tabLogin');
   const tabRegister = document.getElementById('tabRegister');
+  const googleWrap = document.getElementById('googleAuthWrap');
+  const googleBtn = document.getElementById('googleSignInBtn');
+  const googleHint = document.getElementById('googleEmailHint');
+  const cloudAuth = window.KFCloud && KFCloud.enabled();
 
   let mode = 'login';
 
@@ -54,8 +58,13 @@
     passEl.autocomplete = register ? 'new-password' : 'current-password';
     passEl.placeholder = register ? 'Password (at least 6 characters)' : 'Enter password';
     noteEl.textContent = register
-      ? 'This is the owner account. After this, add cashiers on User Accounts. Cashiers do not register here.'
-      : 'Cashiers sign in here with the username the owner created. They do not create an account.';
+      ? 'Owner account: use Google (Gmail) or username + password. Cashiers do not register here.'
+      : 'Owners can use Google (Gmail). Cashiers use the username and password the owner created.';
+    if (googleBtn) {
+      googleBtn.innerHTML = register
+        ? '<i class="fa-brands fa-google"></i> Create account with Google'
+        : '<i class="fa-brands fa-google"></i> Continue with Google';
+    }
     errEl.hidden = true;
     if (register) history.replaceState(null, '', '#create');
     else history.replaceState(null, '', location.pathname.split('/').pop() || 'login.html');
@@ -68,6 +77,18 @@
   const wantCreate = /^(#create|#register|#signup)$/i.test(location.hash) ||
     (!(window.KFCloud && KFCloud.enabled()) && KF.needsSetup());
   if (wantCreate) setMode('register');
+
+  if (cloudAuth && googleWrap) {
+    googleWrap.hidden = false;
+    try {
+      const lastGmail = localStorage.getItem('kf_last_google_email');
+      if (lastGmail && googleHint) {
+        googleHint.hidden = false;
+        googleHint.textContent = `Last Google sign-in: ${lastGmail}. Use the button above — Google does not share your password with KASHFLOW.`;
+        if (!userEl.value) userEl.value = lastGmail;
+      }
+    } catch (e) { /* ignore */ }
+  }
 
   function lockedMessage(until) {
     const mins = Math.max(1, Math.ceil((until - Date.now()) / 60000));
@@ -121,8 +142,62 @@
     goIn('admin');
   }
 
+  function normalizeLoginUsername(raw) {
+    const v = String(raw || '').trim().toLowerCase();
+    if (v.includes('@')) return v.split('@')[0].replace(/[^a-z0-9._-]/g, '').replace(/^\.+|\.+$/g, '');
+    return v;
+  }
+
+  async function finishCloudSession(s, { created = false } = {}) {
+    if (mode === 'login' && s.role !== roleEl.value) {
+      await KFCloud.signOut();
+      throw new Error(`This account is not a${roleEl.value === 'admin' ? 'n Administrator' : ' Cashier'}. Choose the correct "Login As" option.`);
+    }
+    KF.clearLoginLock();
+    KF.ensureTrialStart();
+    KF.seedIfEmpty();
+    const now = new Date().toISOString();
+    const lastLogin = KF.getLastLogin();
+    KF.setLastLogin({ time: now, username: s.username });
+    if (created) {
+      KF.notify({
+        type: 'login',
+        title: 'Account created',
+        message: `Administrator "${s.displayName || s.username}" is live. Add cashiers on User Accounts, load products, then they can sell on any computer.`,
+        link: 'users.html',
+      });
+    } else {
+      KF.notify({
+        type: 'login',
+        title: 'Login',
+        message: `${s.displayName || s.username} (${s.roleTitle}) logged in${lastLogin ? '. Previous login: ' + KF.formatDateTime(lastLogin.time) + ' by ' + lastLogin.username : ''}.`,
+        link: s.role === 'admin' ? 'dashboard.html' : 'pos.html',
+      });
+    }
+    goIn(s.role);
+  }
+
+  async function signInWithGoogleFlow() {
+    if (!cloudAuth) return showError('Google sign-in needs Firebase (online mode).');
+    errEl.hidden = true;
+    googleBtn.disabled = true;
+    submitBtn.disabled = true;
+    try {
+      const created = mode === 'register';
+      const s = await KFCloud.signInWithGoogle({ register: created });
+      await finishCloudSession(s, { created });
+    } catch (err) {
+      showError(err.message || 'Google sign-in failed.');
+    } finally {
+      googleBtn.disabled = false;
+      submitBtn.disabled = false;
+    }
+  }
+
+  if (googleBtn) googleBtn.addEventListener('click', () => { signInWithGoogleFlow(); });
+
   async function createAccount() {
-    const username = userEl.value.trim().toLowerCase();
+    const username = normalizeLoginUsername(userEl.value);
     const password = passEl.value;
     const cloud = window.KFCloud && KFCloud.enabled();
 
@@ -199,11 +274,11 @@
       return;
     }
 
-    const username = userEl.value.trim().toLowerCase();
+    const username = normalizeLoginUsername(userEl.value);
     const password = passEl.value;
     const role = roleEl.value;
     if (!username || !password) {
-      showError('Enter your username and password.');
+      showError('Enter your username (or Gmail) and password.');
       return;
     }
 

@@ -181,6 +181,25 @@
     }
   }
 
+  function deriveUsernameFromGoogle(user) {
+    const email = String(user.email || '').toLowerCase();
+    let base = email.split('@')[0].replace(/[^a-z0-9._-]/g, '').replace(/^\.+|\.+$/g, '');
+    if (base.length < 3) {
+      base = ('shop' + String(user.uid || '').slice(0, 8)).replace(/[^a-z0-9._-]/g, '');
+    }
+    return base.slice(0, 48);
+  }
+
+  async function pickUsername(base, uid) {
+    let candidate = base;
+    for (let n = 0; n < 40; n++) {
+      const hit = await db.collection('usernames').doc(candidate).get();
+      if (!hit.exists || hit.data().uid === uid) return candidate;
+      candidate = `${base}${n + 1}`;
+    }
+    throw new Error('Could not assign a username for this Google account.');
+  }
+
   async function createShopRecord({ name, username, uid, role }) {
     const code = await uniqueCode();
     const shopId = db.collection('shops').doc().id;
@@ -230,8 +249,8 @@
       roleTitle,
       displayName: String(acc.username || current.username || '').toLowerCase() === 'kizaa'
         ? 'KB.TECH STUDIO'
-        : (acc.username || current.username),
-      photo: null,
+        : (acc.displayName || user.displayName || acc.username || current.username),
+      photo: acc.photoURL || user.photoURL || null,
       staffId: null,
       shopId: current.id,
       shopCode: current.code || shopData.code,
@@ -322,6 +341,68 @@
       });
       await hydrateSession(cred.user);
       return KFCloud.session();
+    },
+
+    /** Owner sign-in / sign-up with Google (Gmail). Password is never shared with KASHFLOW. */
+    async signInWithGoogle({ register = false } = {}) {
+      if (!enabled || !auth) throw new Error('Online sign-in is not set up.');
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.addScope('email');
+      provider.addScope('profile');
+      provider.setCustomParameters({ prompt: 'select_account' });
+      let cred;
+      try {
+        cred = await auth.signInWithPopup(provider);
+      } catch (err) {
+        if (err && err.code === 'auth/popup-closed-by-user') {
+          throw new Error('Google sign-in was cancelled.');
+        }
+        if (err && err.code === 'auth/popup-blocked') {
+          throw new Error('Allow pop-ups for this site, then try Google again.');
+        }
+        throw err;
+      }
+      const user = cred.user;
+      if (!user || !user.email) {
+        await auth.signOut();
+        throw new Error('Google did not share your email. Allow email access and try again.');
+      }
+
+      const accSnap = await db.collection('accounts').doc(user.uid).get();
+      const acc = accSnap.exists ? accSnap.data() : null;
+      const shops = (acc && acc.shops) || [];
+
+      if (!shops.length) {
+        if (!register) {
+          await auth.signOut();
+          throw new Error('No shop for this Google account. Open Create account and use Continue with Google.');
+        }
+        const username = await pickUsername(deriveUsernameFromGoogle(user), user.uid);
+        await createShopRecord({
+          name: 'KASHFLOW', username, uid: user.uid, role: 'Administrator',
+        });
+        await writeAccount(user.uid, {
+          email: user.email,
+          authProvider: 'google',
+          photoURL: user.photoURL || null,
+          displayName: user.displayName || username,
+        });
+      } else {
+        await writeAccount(user.uid, {
+          email: user.email,
+          authProvider: 'google',
+          photoURL: user.photoURL || null,
+          displayName: user.displayName || acc.displayName || acc.username,
+        });
+      }
+
+      const s = await hydrateSession(user);
+      if (!s) {
+        await auth.signOut();
+        throw new Error('Could not open your shop.');
+      }
+      try { localStorage.setItem('kf_last_google_email', user.email); } catch (e) { /* ignore */ }
+      return s;
     },
 
     async addShop(shopName) {
