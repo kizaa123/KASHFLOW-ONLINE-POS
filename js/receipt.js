@@ -1,13 +1,11 @@
-/* Receipt: builds the printable sales receipt and sends it to the printer. */
+/* Receipt: print preview modal + actual printer output. */
 (function () {
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const amt = (n) => 'GH₵' + Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Draws a barcode-style strip from the order number (visual, like the original receipt).
   function barcodeDataUrl(text) {
     const canvas = document.createElement('canvas');
     const bits = [];
-    // Start guard, data bars derived from the characters, end guard.
     bits.push(1, 0, 1);
     for (const ch of String(text)) {
       const code = ch.charCodeAt(0);
@@ -31,21 +29,56 @@
     if (line.unit === 'packet' && per > 1) return `Packet (${per} pcs)`;
     return 'Single';
   }
-  function qtyLabel(line) {
+  function qtyDisplay(line) {
     const per = Number(line.piecesPerPkt) || 1;
     if (line.unit === 'packet' && per > 1) return `${line.qty}<br><small>(${line.qty * per} Pcs)</small>`;
     return String(line.qty);
   }
 
-  function receiptHtml(sale) {
+  function receiptPreviewHtml(sale) {
+    const rows = sale.items.map((l) => `
+      <tr>
+        <td class="rcp-item">${esc(l.name)}</td>
+        <td class="rcp-unit">${esc(unitLabel(l))}</td>
+        <td>${qtyDisplay(l)}</td>
+        <td class="rcp-tot">${Number(l.qty * l.price).toFixed(2)}</td>
+      </tr>`).join('');
+    return `
+      <p class="rcp-name">${esc(KF.getShopName().toUpperCase())}</p>
+      <p class="rcp-sub">Official Sales Receipt</p>
+      <hr class="rcp-dash" />
+      <div class="rcp-meta">
+        <div><b>Order ID:</b><span class="rcp-green">${esc(sale.orderNo)}</span></div>
+        <div><b>Date:</b><span>${esc(KF.formatDateTime(sale.time))}</span></div>
+        <div><b>Served By:</b><span>${esc(sale.cashier)}</span></div>
+        ${sale.customer ? `<div><b>Customer:</b><span>${esc(sale.customer)}</span></div>` : ''}
+        <div><b>Payment:</b><span>${esc(sale.payment || 'Cash')}</span></div>
+      </div>
+      <table>
+        <thead><tr><th>ITEM</th><th>UNIT</th><th>QTY</th><th>TOTAL (GH₵)</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <hr class="rcp-dash" />
+      <div class="rcp-total">
+        <span>TOTAL PAID:</span>
+        <span class="rcp-amt">${amt(sale.total)}</span>
+      </div>
+      <div class="rcp-barcode">
+        <img src="${barcodeDataUrl(sale.orderNo)}" alt="${esc(sale.orderNo)}" />
+      </div>
+      <p class="rcp-thanks">Thank you for your purchase!</p>
+      <p class="rcp-policy">Items purchased cannot be returned.</p>
+      <p class="rcp-credit">software built by KB.TECH Studio<br />0531806381</p>`;
+  }
+
+  function receiptPrintableHtml(sale) {
     const rows = sale.items.map((l) => `
       <tr>
         <td class="item">${esc(l.name)}</td>
         <td class="unit">${esc(unitLabel(l))}</td>
-        <td class="qty">${qtyLabel(l)}</td>
+        <td class="qty">${l.unit === 'packet' && Number(l.piecesPerPkt) > 1 ? `${l.qty}<br><small>(${l.qty * Number(l.piecesPerPkt)} Pcs)</small>` : l.qty}</td>
         <td class="tot">${Number(l.qty * l.price).toFixed(2)}</td>
       </tr>`).join('');
-
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(sale.orderNo)} - Receipt</title>
 <style>
   @page { margin: 10mm; }
@@ -60,7 +93,7 @@
   table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10.5px; }
   th, td { border: 1px solid #111; padding: 4px 3px; text-align: center; vertical-align: middle; }
   th { font-size: 9.5px; letter-spacing: 0.3px; }
-  td.item { text-align: center; font-weight: 600; }
+  td.item { font-weight: 600; }
   td.unit { font-weight: 700; font-size: 9px; }
   td.qty small { font-size: 8px; font-weight: 600; }
   td.tot { font-weight: 700; }
@@ -69,8 +102,8 @@
   .barcode { text-align: center; margin-top: 14px; }
   .barcode img { height: 44px; }
   .thanks { text-align: center; margin-top: 8px; font-size: 10px; color: #374151; }
-  .policy { text-align: center; margin-top: 5px; font-size: 7px; color: #6b7280; font-style: italic; font-weight: 400; }
-  .credit { text-align: center; margin: 12px 0 2px; font-size: 6.5px; color: #b4b9c2; line-height: 1.5; font-weight: 400; font-style: normal; }
+  .policy { text-align: center; margin-top: 5px; font-size: 7px; color: #6b7280; font-style: italic; }
+  .credit { text-align: center; margin: 12px 0 2px; font-size: 6.5px; color: #b4b9c2; line-height: 1.5; }
 </style></head>
 <body><div class="receipt">
   <h1>${esc(KF.getShopName().toUpperCase())}</h1>
@@ -96,8 +129,67 @@
 </div></body></html>`;
   }
 
-  // Prints through a hidden iframe so no pop-up blocker gets in the way.
-  function printReceipt(sale) {
+  function showPreviewModal(sale) {
+    const old = document.getElementById('kfReceiptPreview');
+    if (old) old.remove();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'kfReceiptPreview';
+    backdrop.className = 'print-preview-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.setAttribute('aria-label', 'Receipt Preview');
+
+    backdrop.innerHTML = `
+      <div class="print-preview-shell receipt-shell">
+        <div class="print-preview-bar">
+          <h3><i class="fa-solid fa-receipt"></i> Receipt Preview</h3>
+          <button class="pp-btn-close-icon" id="ppReceiptCloseIcon" type="button" title="Close" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="print-preview-scroll">
+          <div class="print-paper receipt-paper">${receiptPreviewHtml(sale)}</div>
+        </div>
+        <div class="print-preview-footer">
+          <button class="pp-btn-cancel" id="ppReceiptClose" type="button">
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="pp-btn-print" id="ppReceiptPrint" type="button">
+            <i class="fa-solid fa-print"></i> Print Receipt
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+
+    requestAnimationFrame(() => requestAnimationFrame(() => backdrop.classList.add('is-open')));
+
+    function close() {
+      backdrop.classList.remove('is-open');
+      backdrop.classList.add('is-leaving');
+      setTimeout(() => {
+        backdrop.remove();
+        if (!document.querySelector('.modal-backdrop.is-open')) document.body.classList.remove('modal-open');
+      }, 240);
+    }
+
+    const closeBtn = document.getElementById('ppReceiptClose');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    const closeIcon = document.getElementById('ppReceiptCloseIcon');
+    if (closeIcon) closeIcon.addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    document.addEventListener('keydown', function escClose(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escClose); }
+    });
+
+    document.getElementById('ppReceiptPrint').addEventListener('click', () => {
+      sendToPrinter(sale);
+    });
+  }
+
+  function sendToPrinter(sale) {
     const old = document.getElementById('receiptFrame');
     if (old) old.remove();
     const frame = document.createElement('iframe');
@@ -106,14 +198,16 @@
     document.body.appendChild(frame);
     const doc = frame.contentWindow.document;
     doc.open();
-    doc.write(receiptHtml(sale));
+    doc.write(receiptPrintableHtml(sale));
     doc.close();
-    const go = () => {
-      try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { /* ignore */ }
-    };
+    const go = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { /* ignore */ } };
     if (doc.readyState === 'complete') setTimeout(go, 150);
     else frame.onload = () => setTimeout(go, 150);
   }
 
-  window.KFReceipt = { receiptHtml, printReceipt, barcodeDataUrl };
+  window.KFReceipt = {
+    receiptHtml: receiptPrintableHtml,
+    printReceipt: showPreviewModal,
+    barcodeDataUrl,
+  };
 })();

@@ -646,75 +646,36 @@
     KFUI.toast(`Exported ${d.rows.length} item line(s) to PDF.`);
   }
 
-  // ---------- Print (clean document: summary + items table, no charts or images) ----------
-  function reportHtml(d) {
-    const cell = (v, cls = '') => `<td${cls ? ` class="${cls}"` : ''}>${esc(v)}</td>`;
-    const dtCell = (i) => {
-      const dt = d.dates[i] || { date: d.rows[i][0], time: '' };
-      return `<td class="dt"><span class="d">${esc(dt.date)}</span><span class="t">${esc(dt.time)}</span></td>`;
-    };
-    const rows = d.rows.map((r, i) => `<tr>${dtCell(i)}${cell(r[1], 'mono')}${cell(r[2], 'left')}${cell(r[3])}${cell(r[4])}${cell(r[5], 'r')}${cell(plain(r[6]), 'r')}${cell(plain(r[7]), 'r')}${cell(r[8])}${cell(r[9])}</tr>`).join('');
-    const itemRows = d.itemsRows.map((r) => `<tr>${cell(r[0])}${cell(r[1], 'left')}${cell(r[2])}${cell(r[3], 'r')}${cell(r[4], 'r')}${cell(plain(r[5]), 'r')}${cell(plain(r[6]), 'r')}</tr>`).join('');
-    const leader = (label, value) => `<div class="leader"><span class="ll">${esc(label)}</span><span class="dots"></span><span class="lv">${esc(value)}</span></div>`;
-    const money = (n) => 'GHS ' + plain(n);
+  function reportPrintableHtml(d, paperHtml) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(d.shop)} - Sales Report</title>
 <style>
-  @page { margin: 12mm; }
-  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; font-size: 11px; }
-  h1 { font-size: 18px; margin: 0; }
-  h2 { font-size: 13px; margin: 2px 0 10px; color: #1e293b; }
-  h3 { font-size: 12px; margin: 22px 0 8px; color: #1e293b; }
-  .meta { color: #4b5563; font-size: 10px; line-height: 1.6; }
-  .leaders { width: 280px; margin: 12px 0 16px; }
-  .leader { display: flex; align-items: baseline; gap: 4px; margin: 5px 0; font-size: 11px; }
-  .leader .ll { white-space: nowrap; }
-  .leader .dots { flex: 1; overflow: hidden; white-space: nowrap; color: #64748b; letter-spacing: 1.5px; font-size: 11px; line-height: 1; }
-  .leader .dots::before { content: ".................................................."; }
-  .leader .lv { font-weight: 700; white-space: nowrap; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { border: 1px solid #cbd5e1; padding: 8px 8px; text-align: center; font-size: 10px; vertical-align: middle; }
-  th { background: none; background-color: transparent; color: #000; font-weight: 800; }
+  @page { size: A4; margin: 15mm 12mm; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; padding: 10px; font-size: 11px; }
+  .rp-shop { font-size: 20px; font-weight: 800; margin: 0; color: #111827; }
+  .rp-title { font-size: 14px; font-weight: 600; margin: 2px 0 10px; color: #1e293b; }
+  .rp-meta { color: #4b5563; font-size: 10px; line-height: 1.9; }
+  .rp-divider { border: 0; border-top: 1.5px solid #cbd5e1; margin: 14px 0 18px; }
+  .rp-leaders { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 28px; margin-bottom: 22px; }
+  .rp-leader { display: flex; align-items: baseline; gap: 4px; font-size: 11px; }
+  .rp-leader .ll { white-space: nowrap; color: #374151; }
+  .rp-leader .dots { flex: 1; overflow: hidden; white-space: nowrap; color: #9ca3af; font-size: 10px; letter-spacing: 1.5px; }
+  .rp-leader .dots::before { content: ".........................................................."; }
+  .rp-leader .lv { font-weight: 800; white-space: nowrap; color: #111827; }
+  h3.rp-section { font-size: 12px; font-weight: 700; color: #1e293b; margin: 24px 0 10px; padding-bottom: 5px; border-bottom: 1.5px solid #cbd5e1; }
+  table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 15px; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 5px; text-align: center; vertical-align: middle; }
+  th { background: #f8fafc; font-weight: 800; font-size: 9.5px; color: #1e293b; }
   td.left, th.left { text-align: left; }
   td.r { text-align: right; }
-  td.mono { font-weight: 700; color: #15803d; }
-  td.dt .d { display: block; font-weight: 700; }
-  td.dt .t { display: block; font-size: 9px; color: #4b5563; margin-top: 2px; }
+  td.mono { font-weight: 700; color: #15803d; font-size: 10px; }
+  tbody tr:nth-child(even) td { background: #f8fafc; }
   tfoot td { font-weight: 800; background: #f1f5f9; }
-  tr { page-break-inside: avoid; }
-  .foot { margin-top: 14px; font-size: 9px; color: #6b7280; text-align: center; }
+  .rp-foot { text-align: center; margin-top: 20px; font-size: 9px; color: #9ca3af; border-top: 1px solid #cbd5e1; padding-top: 10px; }
 </style></head>
-<body>
-  <h1>${esc(d.shop.toUpperCase())}</h1>
-  <h2>Sales Report</h2>
-  <div class="meta">
-    Period: <b>${esc(d.period)}</b><br />
-    Category: ${esc(d.category)} &nbsp;|&nbsp; Cashier: ${esc(d.cashier)}${d.search ? ` &nbsp;|&nbsp; Search: "${esc(d.search)}"` : ''}<br />
-    Generated: ${esc(d.generated)}${d.by ? ` by ${esc(d.by)}` : ''}
-  </div>
-  <div class="leaders">
-    ${leader('Total Revenue:', money(d.summary.revenue))}
-    ${leader('Total Profit:', money(d.summary.profit))}
-    ${leader('Orders:', String(d.summary.orders))}
-    ${leader('Total Sold:', String(d.summary.items))}
-    ${leader('Top Selling:', d.summary.top ? d.summary.top.label : '—')}
-  </div>
-  <table>
-    <thead><tr><th>Date &amp; Time</th><th>Order No</th><th class="left">Item</th><th>Category</th><th>Unit</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Cashier</th><th>Payment</th></tr></thead>
-    <tbody>${rows || '<tr><td colspan="10">No items sold in this period.</td></tr>'}</tbody>
-    <tfoot><tr><td colspan="5" class="left">Totals</td><td class="r">${d.summary.items}</td><td></td><td class="r">GH₵${plain(d.summary.revenue)}</td><td></td><td></td></tr></tfoot>
-  </table>
-  <h3>Summary by Item</h3>
-  <table>
-    <thead><tr><th>#</th><th class="left">Item</th><th>Category</th><th>Qty Sold</th><th>Orders</th><th>Revenue</th><th>Profit</th></tr></thead>
-    <tbody>${itemRows || '<tr><td colspan="7">No items sold in this period.</td></tr>'}</tbody>
-    <tfoot><tr><td></td><td class="left">Totals</td><td></td><td class="r">${d.summary.items}</td><td class="r">${d.summary.orders}</td><td class="r">GH₵${plain(d.summary.revenue)}</td><td class="r">GH₵${plain(d.summary.profit)}</td></tr></tfoot>
-  </table>
-  <p class="foot">${esc(d.shop)} · Sales Report · Generated by KASHFLOW</p>
-</body></html>`;
+<body><div class="report-paper">${paperHtml}</div></body></html>`;
   }
 
-  function printReport() {
-    const d = exportDataset();
+  function sendReportToPrinter(d, paperHtml) {
     const old = document.getElementById('reportFrame');
     if (old) old.remove();
     const frame = document.createElement('iframe');
@@ -723,12 +684,163 @@
     document.body.appendChild(frame);
     const doc = frame.contentWindow.document;
     doc.open();
-    doc.write(reportHtml(d));
+    doc.write(reportPrintableHtml(d, paperHtml));
     doc.close();
     const go = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { /* ignore */ } };
     if (doc.readyState === 'complete') setTimeout(go, 150);
     else frame.onload = () => setTimeout(go, 150);
   }
+
+  function showReportPreview() {
+    const d = exportDataset();
+
+    const old = document.getElementById('kfReportPreview');
+    if (old) old.remove();
+
+    function leader(label, value) {
+      return `<div class="rp-leader">
+        <span class="ll">${esc(label)}</span>
+        <span class="dots"></span>
+        <span class="lv">${esc(value)}</span>
+      </div>`;
+    }
+
+    const money = (n) => 'GHS ' + plain(n);
+
+    const chrono = d.rows;
+    const itemRows = d.itemsRows.map((r) =>
+      `<tr>
+        <td>${r[0]}</td>
+        <td class="left">${esc(String(r[1]))}</td>
+        <td>${esc(String(r[2]))}</td>
+        <td class="r">${Number(r[3]).toLocaleString()}</td>
+        <td class="r">${r[4]}</td>
+        <td class="r">${plain(r[5])}</td>
+        <td class="r">${plain(r[6])}</td>
+      </tr>`).join('');
+
+    const soldRows = chrono.map((r) =>
+      `<tr>
+        <td class="mono">${esc(String(r[1]))}</td>
+        <td class="left">${esc(String(r[2]))}</td>
+        <td>${esc(String(r[3]))}</td>
+        <td>${esc(String(r[4]))}</td>
+        <td class="r">${r[5]}</td>
+        <td class="r">${plain(r[6])}</td>
+        <td class="r">${plain(r[7])}</td>
+        <td>${esc(String(r[8]))}</td>
+      </tr>`).join('');
+
+    const paperHtml = `
+      <p class="rp-shop">${esc(d.shop.toUpperCase())}</p>
+      <p class="rp-title">Sales Report</p>
+      <div class="rp-meta">
+        Period: <strong>${esc(d.period)}</strong><br>
+        Category: ${esc(d.category)} &nbsp;|&nbsp; Cashier: ${esc(d.cashier)}${d.search ? ` &nbsp;|&nbsp; Search: "${esc(d.search)}"` : ''}<br>
+        Generated: ${esc(d.generated)}${d.by ? ` by ${esc(d.by)}` : ''}
+      </div>
+      <hr class="rp-divider" />
+      <div class="rp-leaders">
+        ${leader('Total Revenue:', money(d.summary.revenue))}
+        ${leader('Total Profit:', money(d.summary.profit))}
+        ${leader('Total Orders:', String(d.summary.orders))}
+        ${leader('Items Sold:', String(d.summary.items))}
+        ${leader('Top Selling:', d.summary.top ? d.summary.top.label : '—')}
+      </div>
+      ${soldRows ? `
+      <h3 class="rp-section"><i class="fa-solid fa-list"></i> Items Sold</h3>
+      <table>
+        <thead><tr>
+          <th>Order No</th><th class="left">Item</th><th>Category</th><th>Unit</th>
+          <th>Qty</th><th>Unit Price</th><th>Total</th><th>Cashier</th>
+        </tr></thead>
+        <tbody>${soldRows}</tbody>
+        <tfoot><tr>
+          <td colspan="4" class="left">Totals</td>
+          <td class="r">${d.summary.items}</td>
+          <td></td>
+          <td class="r">${plain(d.summary.revenue)}</td>
+          <td></td>
+        </tr></tfoot>
+      </table>` : '<p style="color:#6b7280;font-size:11px">No items sold in this period.</p>'}
+      ${itemRows ? `
+      <h3 class="rp-section"><i class="fa-solid fa-ranking-star"></i> Summary by Item</h3>
+      <table>
+        <thead><tr>
+          <th>#</th><th class="left">Item</th><th>Category</th>
+          <th>Qty Sold</th><th>Orders</th><th>Revenue (GHS)</th><th>Profit (GHS)</th>
+        </tr></thead>
+        <tbody>${itemRows}</tbody>
+        <tfoot><tr>
+          <td></td><td class="left">Totals</td><td></td>
+          <td class="r">${d.summary.items}</td>
+          <td class="r">${d.summary.orders}</td>
+          <td class="r">${plain(d.summary.revenue)}</td>
+          <td class="r">${plain(d.summary.profit)}</td>
+        </tr></tfoot>
+      </table>` : ''}
+      <p class="rp-foot">${esc(d.shop)} &middot; Sales Report &middot; Generated by KASHFLOW</p>`;
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'kfReportPreview';
+    backdrop.className = 'print-preview-backdrop';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.setAttribute('aria-label', 'Report Print Preview');
+
+    backdrop.innerHTML = `
+      <div class="print-preview-shell">
+        <div class="print-preview-bar">
+          <h3>
+            <i class="fa-solid fa-print"></i> Report Print Preview
+            <span class="pp-badge">${esc(d.period)}</span>
+          </h3>
+          <button class="pp-btn-close-icon" id="ppReportCloseIcon" type="button" title="Close" aria-label="Close">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="print-preview-scroll">
+          <div class="print-paper report-paper">${paperHtml}</div>
+        </div>
+        <div class="print-preview-footer">
+          <button class="pp-btn-cancel" id="ppReportClose" type="button">
+            <i class="fa-solid fa-xmark"></i> Cancel
+          </button>
+          <button class="pp-btn-print" id="ppReportPrint" type="button">
+            <i class="fa-solid fa-print"></i> Print Report
+          </button>
+        </div>
+      </div>`;
+
+    document.body.appendChild(backdrop);
+    document.body.classList.add('modal-open');
+
+    requestAnimationFrame(() => requestAnimationFrame(() => backdrop.classList.add('is-open')));
+
+    function close() {
+      backdrop.classList.remove('is-open');
+      backdrop.classList.add('is-leaving');
+      setTimeout(() => {
+        backdrop.remove();
+        if (!document.querySelector('.modal-backdrop.is-open')) document.body.classList.remove('modal-open');
+      }, 240);
+    }
+
+    const closeBtn = document.getElementById('ppReportClose');
+    if (closeBtn) closeBtn.addEventListener('click', close);
+    const closeIcon = document.getElementById('ppReportCloseIcon');
+    if (closeIcon) closeIcon.addEventListener('click', close);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+    document.addEventListener('keydown', function escClose(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', escClose); }
+    });
+
+    document.getElementById('ppReportPrint').addEventListener('click', () => {
+      sendReportToPrinter(d, paperHtml);
+    });
+  }
+
+  function printReport() { showReportPreview(); }
 
   // ---------- Orchestration ----------
   function apply() {
