@@ -245,7 +245,7 @@
         <ul>
           <li><strong>Today’s Sale</strong> — money taken today (completed sales only)</li>
           <li><strong>Total Products / Categories / Suppliers</strong></li>
-          <li><strong>Total Profit</strong> — selling price minus cost, for all completed sales</li>
+          <li><strong>Today&apos;s Profit</strong> — selling price minus cost, for items sold today only</li>
           <li>The bar chart compares <strong>today</strong> (blue) with <strong>yesterday</strong> (orange), hour by hour</li>
           <li><strong>Low Stock Alerts</strong> lists items under 10</li>
         </ul>

@@ -256,7 +256,10 @@
   };
 
   // ---- Unread-notifications badge on the bell ----
-  KF.syncLowStockNotifications();
+  setTimeout(() => {
+    KF.syncLowStockNotifications();
+    if (KFUI.refreshBell) KFUI.refreshBell();
+  }, 0);
   KFUI.refreshBell = function () {
     const badge = document.getElementById('notifCount');
     if (!badge) return;

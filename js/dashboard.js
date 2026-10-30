@@ -20,7 +20,7 @@
     KFUI.countTo(document.getElementById('statProducts'), KF.getProducts().length);
     KFUI.countTo(document.getElementById('statCategories'), KF.getCategories().length);
     KFUI.countTo(document.getElementById('statSuppliers'), KF.getSuppliers().length);
-    KFUI.countTo(document.getElementById('statProfit'), KF.totalProfit(), { money: true, decimals: 2, prefix: 'GH₵ ' });
+    KFUI.countTo(document.getElementById('statProfit'), KF.todayProfit(), { money: true, decimals: 2, prefix: 'GH₵ ' });
   }
 
   function renderChart() {

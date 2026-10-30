@@ -15,6 +15,19 @@
   let persistTimers = {};
   let applyingRemote = false;
   let secondary = null;
+  const remoteSig = {};
+  const persistSize = {};
+
+  function collectionSig(key, list) {
+    const rows = list || [];
+    if (key === 'products') {
+      return `${rows.length}|${rows.map((x) => `${x.id}:${x.qty}:${x.price}`).join(';')}`;
+    }
+    if (key === 'sales') {
+      return `${rows.length}|${rows.map((x) => `${x.id}:${x.returned ? 1 : 0}:${x.total}`).join(';')}`;
+    }
+    return `${rows.length}|${rows.map((x) => x.id).join(',')}`;
+  }
 
   function emailFor(code, username) {
     const u = String(username || '').toLowerCase().replace(/[^a-z0-9._-]/g, '');
@@ -51,10 +64,14 @@
 
   function watchShop(shopId) {
     stopWatch();
+    COLS.forEach((key) => { delete remoteSig[key]; delete persistSize[key]; });
     COLS.forEach((key) => {
       const off = itemsCol(shopId, key).onSnapshot((snap) => {
         const list = snap.docs.map((d) => d.data());
         list.sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+        const sig = collectionSig(key, list);
+        if (remoteSig[key] === sig) return;
+        remoteSig[key] = sig;
         applyingRemote = true;
         KF.hydrate(KF.KEYS[key], list);
         applyingRemote = false;
@@ -83,25 +100,24 @@
   async function persistCollection(key, list) {
     if (!session || !session.shopId) return;
     const col = itemsCol(session.shopId, key);
-    const snap = await col.get();
     const rows = (list || []).map((item) => {
       const copy = { ...item };
       if (key === 'users') delete copy.password;
       return clean(copy);
     });
     const want = new Map(rows.map((item) => [String(item.id), item]));
+    const prevSize = persistSize[key] || 0;
+    const needDeleteScan = rows.length < prevSize;
+    persistSize[key] = rows.length;
     const batch = db.batch();
-    let n = 0;
-    snap.docs.forEach((d) => {
-      if (!want.has(d.id)) {
-        batch.delete(d.ref);
-        n++;
-      }
-    });
+    if (needDeleteScan) {
+      const snap = await col.get();
+      snap.docs.forEach((d) => {
+        if (!want.has(d.id)) batch.delete(d.ref);
+      });
+    }
     want.forEach((item, id) => {
       batch.set(col.doc(id), item, { merge: true });
-      n++;
-      if (n >= 400) { /* commit in chunks via extra batches if needed */ }
     });
     await batch.commit();
   }
@@ -117,7 +133,7 @@
     clearTimeout(persistTimers[name]);
     persistTimers[name] = setTimeout(() => {
       persistCollection(name, value).catch((err) => console.warn('KASHFLOW sync', err));
-    }, 280);
+    }, 450);
   }
 
   async function writeMember(shopId, uid, payload) {

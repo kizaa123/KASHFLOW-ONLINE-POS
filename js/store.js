@@ -87,10 +87,24 @@
   function cloudOn() {
     return !!(global.KFCloud && KFCloud.enabled() && KFCloud.session());
   }
+  function activeShopId() {
+    try {
+      if (global.KFCloud && KFCloud.session && KFCloud.session()) return KFCloud.session().shopId || null;
+      const s = JSON.parse(sessionStorage.getItem(KEYS.session) || 'null');
+      return (s && s.shopId) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function dataKey(key) {
+    const sid = activeShopId();
+    if (sid && CLOUD_KEYS.has(key)) return `${key}__${sid}`;
+    return key;
+  }
   function read(key, fallback) {
     if (Object.prototype.hasOwnProperty.call(mem, key)) return mem[key];
     try {
-      const v = JSON.parse(localStorage.getItem(key));
+      const v = JSON.parse(localStorage.getItem(dataKey(key)));
       return v === null || v === undefined ? fallback : v;
     } catch (e) {
       return fallback;
@@ -98,11 +112,8 @@
   }
   function write(key, value) {
     mem[key] = value;
-    if (cloudOn() && CLOUD_KEYS.has(key)) {
-      KFCloud.persist(key, value);
-      return;
-    }
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* quota */ }
+    try { localStorage.setItem(dataKey(key), JSON.stringify(value)); } catch (e) { /* quota */ }
+    if (cloudOn() && CLOUD_KEYS.has(key)) KFCloud.persist(key, value);
   }
 
   // ---- Date helpers ----
@@ -187,6 +198,15 @@
   function seedIfEmpty() {
     if (read(KEYS.seeded, false)) { clearDemoCatalog(); return; }
 
+    // Cloud shops load catalog from Firestore — never push empty rows on a new browser.
+    if (cloudOn()) {
+      write(KEYS.seeded, true);
+      write(KEYS.demoSalesRemoved, true);
+      write(KEYS.demoCatalogCleared, true);
+      migrateProducts();
+      return;
+    }
+
     write(KEYS.categories, []);
     write(KEYS.suppliers, []);
     write(KEYS.products, []);
@@ -204,7 +224,22 @@
     todayKey,
     yesterdayKey,
     seedIfEmpty,
-    hydrate(key, value) { mem[key] = value; },
+    hydrate(key, value) {
+      let next = value;
+      if (Array.isArray(next) && !next.length && CLOUD_KEYS.has(key)) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(dataKey(key)));
+          if (Array.isArray(cached) && cached.length) {
+            next = cached;
+            if (cloudOn()) KFCloud.persist(key, next);
+          }
+        } catch (e) { /* keep empty */ }
+      }
+      mem[key] = next;
+      if (CLOUD_KEYS.has(key)) {
+        try { localStorage.setItem(dataKey(key), JSON.stringify(next)); } catch (e) { /* quota */ }
+      }
+    },
     generateBarcode,
     barcodeKey(s) {
       return String(s ?? '').replace(/\s+/g, '').toUpperCase();
@@ -236,9 +271,13 @@
     },
 
     getProducts: () => read(KEYS.products, []),
-    saveProducts(list) {
+    saveProducts(list, opts) {
       write(KEYS.products, list);
-      KF.syncLowStockNotifications();
+      if (opts && opts.deferSideEffects) {
+        setTimeout(() => KF.syncLowStockNotifications(), 0);
+      } else {
+        KF.syncLowStockNotifications();
+      }
     },
     getCategories: () => read(KEYS.categories, []),
     saveCategories: (list) => write(KEYS.categories, list),
@@ -360,11 +399,20 @@
       return KF.activeSales().filter((s) => dayKey(s.time) === key);
     },
 
-    totalProfit() {
-      return KF.activeSales().reduce(
-        (sum, s) => sum + s.items.reduce((a, l) => a + l.qty * (l.price - l.cost), 0),
+    profitFromSales(salesList) {
+      return (salesList || []).reduce(
+        (sum, s) => sum + (s.items || []).reduce(
+          (a, l) => a + (Number(l.qty) || 0) * ((Number(l.price) || 0) - (Number(l.cost) || 0)),
+          0,
+        ),
         0,
       );
+    },
+    totalProfit() {
+      return KF.profitFromSales(KF.activeSales());
+    },
+    todayProfit() {
+      return KF.profitFromSales(KF.salesForDay(KF.todayKey()));
     },
 
     getShopName() {
@@ -396,13 +444,15 @@
       const record = { id: KF.nextId(sales), ...sale };
       sales.push(record);
       write(KEYS.sales, sales);
-      KF.saveProducts(products);
-      KF.notify({
-        type: 'sale',
-        title: 'New sale ' + record.orderNo,
-        message: `${record.items.reduce((n, l) => n + l.qty, 0)} item(s) sold for ${money(record.total)} by ${record.cashier}.`,
-        link: 'pos.html#order=' + encodeURIComponent(record.orderNo),
-      });
+      KF.saveProducts(products, { deferSideEffects: true });
+      setTimeout(() => {
+        KF.notify({
+          type: 'sale',
+          title: 'New sale ' + record.orderNo,
+          message: `${record.items.reduce((n, l) => n + l.qty, 0)} item(s) sold for ${money(record.total)} by ${record.cashier}.`,
+          link: 'pos.html#order=' + encodeURIComponent(record.orderNo),
+        });
+      }, 0);
       return record;
     },
 

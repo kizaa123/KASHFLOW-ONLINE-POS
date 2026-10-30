@@ -31,12 +31,17 @@
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => 'GH ₵ ' + Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const productById = (id) => KF.getProducts().find((p) => p.id === Number(id));
+  let productsById = new Map();
+  function refreshProductCache() {
+    productsById = new Map(KF.getProducts().map((p) => [Number(p.id), p]));
+  }
+  refreshProductCache();
+  const productById = (id) => productsById.get(Number(id));
   const inCart = (id) => cart.find((c) => c.productId === Number(id));
   const isPacket = (p) => p.unit === 'packet' && Number(p.piecesPerPkt) > 1;
 
   function imageHtml(p, cls) {
-    if (p.image) return `<img class="${cls}" src="${p.image}" alt="${esc(p.name)}" />`;
+    if (p.image) return `<img class="${cls}" src="${p.image}" alt="${esc(p.name)}" loading="lazy" decoding="async" />`;
     return `<div class="${cls} no-img"><i class="fa-solid fa-box"></i></div>`;
   }
 
@@ -72,6 +77,42 @@
     }).join('');
   }
 
+  function patchGridCard(id) {
+    const p = productById(id);
+    const el = grid.querySelector(`.pcard[data-id="${id}"]`);
+    if (!p || !el) return false;
+    const qty = Number(p.qty) || 0;
+    const line = inCart(id);
+    const out = qty <= 0;
+    el.classList.toggle('selected', !!line);
+    el.classList.toggle('out', out);
+    el.disabled = out;
+    const qtyEl = el.querySelector('.pcard-qty');
+    if (qtyEl) {
+      qtyEl.textContent = out ? 'Out of stock' : KF.stockLabel(p);
+      qtyEl.classList.toggle('low', qty < KF.LOW_STOCK_LIMIT);
+      qtyEl.classList.toggle('ok', qty >= KF.LOW_STOCK_LIMIT);
+    }
+    let countEl = el.querySelector('.pcard-count');
+    if (line) {
+      if (!countEl) {
+        countEl = document.createElement('span');
+        countEl.className = 'pcard-count';
+        el.appendChild(countEl);
+      }
+      countEl.textContent = line.qty;
+    } else if (countEl) countEl.remove();
+    return true;
+  }
+
+  function afterCartChange(touchedIds) {
+    renderCart({ instant: true });
+    const ids = touchedIds && touchedIds.length ? touchedIds : cart.map((c) => c.productId);
+    let needFull = false;
+    ids.forEach((pid) => { if (!patchGridCard(pid)) needFull = true; });
+    if (needFull) renderGrid();
+  }
+
   // ---------- Cart ----------
   function cartTotals() {
     const subtotal = cart.reduce((s, c) => {
@@ -82,7 +123,8 @@
     return { subtotal, tax, total: subtotal + tax };
   }
 
-  function renderCart() {
+  function renderCart(opts) {
+    const instant = opts && opts.instant;
     // Drop anything whose product was deleted meanwhile.
     cart = cart.filter((c) => productById(c.productId));
     orderEmpty.hidden = cart.length > 0;
@@ -107,9 +149,10 @@
     }).join('');
 
     const t = cartTotals();
-    KFUI.countTo(subtotalEl, t.subtotal, { money: true, decimals: 2, prefix: 'GH ₵ ', duration: 280 });
-    KFUI.countTo(taxEl, t.tax, { money: true, decimals: 2, prefix: 'GH ₵ ', duration: 280 });
-    KFUI.countTo(totalEl, t.total, { money: true, decimals: 2, prefix: 'GH ₵ ', duration: 280 });
+    const countOpts = { money: true, decimals: 2, prefix: 'GH ₵ ', duration: instant ? 0 : 280 };
+    KFUI.countTo(subtotalEl, t.subtotal, countOpts);
+    KFUI.countTo(taxEl, t.tax, countOpts);
+    KFUI.countTo(totalEl, t.total, countOpts);
     checkoutBtn.disabled = cart.length === 0;
   }
 
@@ -125,8 +168,7 @@
     }
     if (line) line.qty += step;
     else cart.push({ productId: Number(id), qty: step });
-    renderCart();
-    renderGrid();
+    afterCartChange([Number(id)]);
     if (announce) KFUI.toast(`${p.name} added`);
     return true;
   }
@@ -157,20 +199,18 @@
     if (delta > 0) return addToCart(id, 1);
     line.qty -= 1;
     if (line.qty <= 0) cart = cart.filter((c) => c.productId !== Number(id));
-    renderCart();
-    renderGrid();
+    afterCartChange([Number(id)]);
   }
 
   function removeLine(id) {
     cart = cart.filter((c) => c.productId !== Number(id));
-    renderCart();
-    renderGrid();
+    afterCartChange([Number(id)]);
   }
 
   function clearCart(silent) {
     if (cart.length === 0) return;
     cart = [];
-    renderCart();
+    renderCart({ instant: true });
     renderGrid();
     if (!silent) KFUI.toast('Order cleared.');
   }
@@ -250,7 +290,7 @@
     checkoutError.hidden = true;
     checkoutForm.reset();
     paintServedBy();
-    KFUI.countTo(dueAmount, cartTotals().total, { money: true, decimals: 2, prefix: 'GH ₵ ', duration: 400 });
+    KFUI.countTo(dueAmount, cartTotals().total, { money: true, decimals: 2, prefix: 'GH ₵ ', duration: 0 });
     KFUI.openModal(checkoutModal);
     setTimeout(() => paymentMethod.focus(), 50);
   }
@@ -269,8 +309,8 @@
       if (!p || c.qty > Number(p.qty)) {
         checkoutError.textContent = `${p ? p.name : 'An item'} no longer has enough stock. Adjust the order.`;
         checkoutError.hidden = false;
-        renderCart();
-        renderGrid();
+        refreshProductCache();
+        afterCartChange(cart.map((c) => c.productId));
         return;
       }
     }
@@ -295,8 +335,9 @@
 
     checkoutModal.hidden = true;
     checkoutModal.classList.remove('is-open', 'is-leaving');
+    refreshProductCache();
     clearCart(true);
-    KFUI.refreshBell();
+    setTimeout(() => { if (KFUI.refreshBell) KFUI.refreshBell(); }, 0);
 
     doneOrderNo.textContent = lastSale.orderNo;
     KFUI.countTo(donePaid, lastSale.total, { money: true, decimals: 2, prefix: 'GH₵', duration: 500 });
@@ -322,7 +363,11 @@
     if (card && !card.disabled) addToCart(card.dataset.id);
   });
 
-  search.addEventListener('input', renderGrid);
+  let searchTimer = null;
+  search.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderGrid, 90);
+  });
   // USB / Bluetooth scanners type the code then press Enter.
   search.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter' || e.defaultPrevented) return;
@@ -408,7 +453,8 @@
       return;
     }
     showTrackDetails(result.sale);
-    KFUI.refreshBell();
+    refreshProductCache();
+    setTimeout(() => { if (KFUI.refreshBell) KFUI.refreshBell(); }, 0);
     renderGrid();
     KFUI.toast(`Order ${result.sale.orderNo} returned to stock.`);
   });
@@ -436,13 +482,25 @@
   });
 
   // Refresh when stock changes in another tab (e.g. a product edited on the Products page).
+  function onCatalogChange() {
+    refreshProductCache();
+    renderChips();
+    renderGrid();
+    renderCart({ instant: true });
+  }
+
   window.addEventListener('storage', (e) => {
-    if (e.key === KF.KEYS.products || e.key === KF.KEYS.categories) { renderChips(); renderGrid(); renderCart(); }
+    if (!e.key || e.key.includes('kf_products') || e.key.includes('kf_categories')) onCatalogChange();
   });
 
-  document.addEventListener('kf:sync', () => { renderChips(); renderGrid(); renderCart(); });
+  document.addEventListener('kf:sync', (e) => {
+    const key = (e.detail && e.detail.key) || '*';
+    if (key === 'sales' || key === 'staff' || key === 'users' || key === 'notifications' || key === 'shopName') return;
+    if (key === 'categories' || key === '*') renderChips();
+    if (key === 'products' || key === 'categories' || key === '*') onCatalogChange();
+  });
   renderChips();
   renderGrid();
-  renderCart();
+  renderCart({ instant: true });
   search.focus();
 })();

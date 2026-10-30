@@ -37,10 +37,15 @@
   }
 
   async function start() {
-    try {
-      if (window.KFCloud && KFCloud.enabled()) await KFCloud.ready();
-    } catch (e) { /* continue */ }
+    const needsCloud = window.KFCloud && KFCloud.enabled();
+    if (check()) KF.setZoom(KF.getZoom());
+    else if (!needsCloud) return;
+
+    if (needsCloud) {
+      try { await KFCloud.ready(); } catch (e) { /* continue */ }
+    }
     if (!check()) return;
+    document.documentElement.style.visibility = '';
     KF.setZoom(KF.getZoom());
   }
 
