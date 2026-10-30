@@ -25,9 +25,12 @@
   const donePaid = document.getElementById('donePaid');
 
   const TAX_RATE = 0;
+  /** One barcode scan = one qty; wait before the same product can be scanned again. */
+  const BARCODE_QTY_COOLDOWN_MS = 5000;
   let activeCat = 'all';
   let cart = [];            // [{ productId, qty }]
   let lastSale = null;
+  const lastBarcodeAddAt = new Map();
 
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => 'GH ₵ ' + Number(n || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -181,7 +184,7 @@
     return digits >= 4 && digits / t.length >= 0.7;
   }
 
-  function applyBarcode(raw) {
+  function addFromBarcode(raw, { announce = true } = {}) {
     const code = String(raw || '').trim();
     if (!code) return false;
     const hit = KF.findProductByBarcode(code) ||
@@ -190,7 +193,21 @@
       KFUI.toast('No product found for that barcode.', 'error');
       return false;
     }
-    return addToCart(hit.id, 1, true);
+    const now = Date.now();
+    const last = lastBarcodeAddAt.get(hit.id) || 0;
+    if (now - last < BARCODE_QTY_COOLDOWN_MS) {
+      const waitSec = Math.ceil((BARCODE_QTY_COOLDOWN_MS - (now - last)) / 1000);
+      KFUI.toast(`Wait ${waitSec}s before scanning ${hit.name} again.`, 'error');
+      return false;
+    }
+    if (!addToCart(hit.id, 1, false)) return false;
+    lastBarcodeAddAt.set(hit.id, now);
+    if (announce) KFUI.toast(`${hit.name} added`);
+    return true;
+  }
+
+  function applyBarcode(raw) {
+    return addFromBarcode(raw, { announce: true });
   }
 
   function changeQty(id, delta) {
@@ -231,8 +248,8 @@
     document.getElementById('trackNo').textContent = sale.orderNo;
     document.getElementById('trackDate').textContent = KF.formatDateTime(sale.time);
     const status = document.getElementById('trackStatus');
-    status.textContent = sale.returned ? 'Returned ' + KF.formatDateTime(sale.returnedAt) : 'Completed';
-    status.className = 'track-status ' + (sale.returned ? 'returned' : 'ok');
+    status.textContent = 'Completed';
+    status.className = 'track-status ok';
     document.getElementById('trackCashier').textContent = sale.cashier;
     document.getElementById('trackCustomer').textContent = sale.customer || '—';
     document.getElementById('trackPayment').textContent = sale.payment || 'Cash';
@@ -246,8 +263,6 @@
         <td>${fmt(l.qty * l.price)}</td>
       </tr>`).join('');
     document.getElementById('trackTotal').textContent = fmt(sale.total);
-    const returnBtn = document.getElementById('trackReturnBtn');
-    if (returnBtn) returnBtn.hidden = !!sale.returned;
     trackDetails.hidden = false;
   }
 
@@ -380,7 +395,9 @@
     const visible = products.filter((p) => p.name.toLowerCase().includes(code.toLowerCase()) || KF.barcodeKey(p.barcode).includes(KF.barcodeKey(code)));
     const hit = exact || (visible.length === 1 ? visible[0] : null);
     if (hit) {
-      addToCart(hit.id, 1, true);
+      const viaBarcode = !!exact || looksLikeBarcode(code);
+      if (viaBarcode) addFromBarcode(code, { announce: true });
+      else addToCart(hit.id, 1, true);
       search.value = '';
       renderGrid();
     } else {
@@ -442,22 +459,6 @@
   trackOrderNo.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); findTrackOrder(); } });
   trackOrderNo.addEventListener('input', () => { trackDetails.hidden = true; trackedSale = null; });
   document.getElementById('trackPrintBtn').addEventListener('click', () => { if (trackedSale) KFReceipt.printReceipt(trackedSale); });
-  document.getElementById('trackReturnBtn').addEventListener('click', () => {
-    if (!trackedSale || trackedSale.returned) return;
-    if (!confirm(`Return order ${trackedSale.orderNo} to stock? This cannot be undone.`)) return;
-    const result = KF.returnSale(trackedSale.orderNo, loginName);
-    if (result.error) {
-      trackError.textContent = result.error;
-      trackError.hidden = false;
-      KFUI.toast(result.error, 'error');
-      return;
-    }
-    showTrackDetails(result.sale);
-    refreshProductCache();
-    setTimeout(() => { if (KFUI.refreshBell) KFUI.refreshBell(); }, 0);
-    renderGrid();
-    KFUI.toast(`Order ${result.sale.orderNo} returned to stock.`);
-  });
 
   // Opened from a sale notification: pos.html#order=ORD-XXXXXX
   function openFromHash() {

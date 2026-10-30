@@ -1086,7 +1086,26 @@ body.modal-open { overflow: hidden; }
 .track-meta div { display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .track-actions { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .track-actions .full { width: 100%; }
-.track-actions:has(#trackReturnBtn[hidden]) { grid-template-columns: 1fr; }
+.track-actions { grid-template-columns: 1fr; }
+.pos-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 10px 0;
+  max-height: min(50vh, 320px);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.pos-data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+html[data-theme="dark"] .pos-data-table thead th {
+  background: #1f2937;
+  box-shadow: 0 1px 0 #374151;
+}
 .muted-small { font-size: 11px; color: var(--muted); }
 
 /* ===== Chips ===== */
@@ -1106,7 +1125,54 @@ html[data-theme="dark"] .chip.active { background: #7c3aed; border-color: #7c3ae
 
 /* ===== POS ===== */
 .pos-content { padding-right: 0; padding-bottom: 0; }
-.pos-layout { display: flex; gap: 18px; align-items: flex-start; min-height: calc(100vh - 18px); }
+.pos-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: calc(100vh - 18px);
+}
+.pos-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--bg);
+  padding-bottom: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.pos-mobile-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 4px 10px;
+}
+.pos-mobile-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--text);
+}
+.pos-mobile-bar-title i { color: #6366f1; }
+.pos-mobile-bar-actions { display: flex; align-items: center; gap: 8px; }
+@media (min-width: 769px) {
+  .pos-mobile-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 6px 8px;
+  }
+  .pos-mobile-bar-title { display: none; }
+}
+.pos-scan-block { padding: 14px 18px 12px; margin-bottom: 0; }
+.pos-products-block { padding: 16px 18px 22px; }
+.pos-body-split {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex: 1;
+  min-height: 0;
+}
 .pos-main { flex: 1; min-width: 0; padding-bottom: 30px; }
 .pos-panel { padding: 20px 22px 26px; }
 .pos-header h1 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; }
@@ -1970,7 +2036,16 @@ body.cashier-view .btn-green.full { font-size: 17px; padding: 14px; }
   .data-table td:first-child { width: 96px; }
   .thumb { width: 72px; height: 72px; }
   .pos-content { padding: 12px; }
-  .pos-layout { flex-direction: column; min-height: 0; }
+  .pos-layout { min-height: 0; }
+  .pos-sticky-top {
+    top: 0;
+    margin: -12px -12px 0;
+    padding: 12px 12px 6px;
+  }
+  .pos-mobile-bar { display: flex; }
+  .pos-header { display: none; }
+  .pos-scan-block { padding: 12px 14px 10px; }
+  .pos-body-split { flex-direction: column; gap: 12px; }
   .order-panel {
     width: 100%;
     position: static;
@@ -1978,7 +2053,23 @@ body.cashier-view .btn-green.full { font-size: 17px; padding: 14px; }
     border-radius: 10px;
   }
   .order-head { flex-wrap: wrap; }
-  .order-head-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .order-head-actions { flex-wrap: wrap; justify-content: flex-end; width: 100%; }
+  .pos-table-wrap { max-height: 240px; }
+  .return-table th,
+  .return-table td { font-size: 11px; padding: 8px 6px; white-space: nowrap; }
+  .return-table th:first-child,
+  .return-table td:first-child { white-space: normal; min-width: 100px; }
+  .table-wrap .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--panel-2);
+    font-size: 11px;
+    white-space: nowrap;
+    padding: 10px 8px;
+  }
+  .table-wrap .data-table td { font-size: 12px; padding: 10px 8px; }
+  .table-wrap .data-table.compact th { font-size: 10px; }
   .order-items { max-height: 280px; }
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .pcard-img { height: 110px; }

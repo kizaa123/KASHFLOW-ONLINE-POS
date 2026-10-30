@@ -73,7 +73,7 @@
       cat: 'people',
       q: 'What can an Administrator do that a Cashier cannot?',
       a: `
-        <p>A <strong>Cashier</strong> can sell on POS, reprint or return an order with Track Order, open Notifications, this Help Center and Contact Us.</p>
+        <p>A <strong>Cashier</strong> can sell on POS, reprint a receipt with Track Order, open Notifications, this Help Center and Contact Us.</p>
         <p>Only an <strong>Administrator</strong> can open Dashboard, Products, Categories, Suppliers, Reports, <strong>Staff Management</strong> and <strong>User Accounts</strong>.</p>`,
     },
     {
@@ -192,14 +192,6 @@
       a: `
         <p>On POS click <strong>Track Order</strong>. Type the <strong>Order ID</strong> (for example ORD-1CETTB) from the receipt or from the sale notification, then search. The items, total and cashier appear. Click <strong>Print Receipt</strong>.</p>
         <p>You can also click the order number on a sale notification, or on the Report’s detailed table — that opens Track Order for that ID.</p>`,
-    },
-    {
-      id: 'returns',
-      cat: 'pos',
-      q: 'Can a customer return items they already paid for?',
-      a: `
-        <p>The printed receipt tells the customer <em>“Items purchased cannot be returned.”</em> If the shop needs to reverse a till mistake, open <strong>Track Order</strong>, find the Order ID, and click <strong>Return to stock</strong>.</p>
-        <p>That puts the items back into inventory, marks the sale as returned, and removes it from Dashboard and Report totals. A returned order cannot be returned a second time.</p>`,
     },
     {
       id: 'served-by',

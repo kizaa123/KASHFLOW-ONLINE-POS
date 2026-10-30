@@ -93,7 +93,7 @@
     const cleaned = KF.barcodeKey(code);
     if (!cleaned) return;
     const now = Date.now();
-    if (cleaned === lastCode && now - lastAt < 500) return;
+    if (cleaned === lastCode && now - lastAt < 5000) return;
     lastCode = cleaned;
     lastAt = now;
     beep();
