@@ -405,13 +405,96 @@
     }
   });
 
-  document.getElementById('posScanBtn').addEventListener('click', () => {
-    KFUI.openScanner({
+  const posScanBtn = document.getElementById('posScanBtn');
+  const posScanHint = document.getElementById('posScanHint');
+  let scanHintTimer = 0;
+  const mobileScanMq = window.matchMedia('(max-width: 900px)');
+
+  function posUseInlineScan() {
+    return mobileScanMq.matches;
+  }
+
+  function productForScanCode(raw) {
+    const code = String(raw || '').trim();
+    if (!code) return null;
+    return KF.findProductByBarcode(code) ||
+      KF.getProducts().find((p) => p.name.toLowerCase() === code.toLowerCase()) ||
+      null;
+  }
+
+  function showScanHint(ok, text) {
+    if (!posScanHint || !text) return;
+    clearTimeout(scanHintTimer);
+    posScanHint.hidden = false;
+    posScanHint.className = `pos-scan-hint ${ok ? 'ok' : 'err'}`;
+    posScanHint.textContent = text;
+    scanHintTimer = setTimeout(() => { posScanHint.hidden = true; }, 4000);
+  }
+
+  function scrollProductIntoView(productId) {
+    const card = grid.querySelector(`.pcard[data-id="${productId}"]`);
+    if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+
+  function onPosScanCode(code) {
+    const hit = productForScanCode(code);
+    const ok = applyBarcode(code);
+    if (posUseInlineScan()) {
+      if (ok && hit) showScanHint(true, `Added: ${hit.name}`);
+      else if (hit) showScanHint(false, `Wait before scanning ${hit.name} again.`);
+      else showScanHint(false, 'No product found for this barcode.');
+    }
+    if (ok && hit) scrollProductIntoView(hit.id);
+    return ok;
+  }
+
+  function posScannerOpts(extra) {
+    const o = extra || {};
+    return {
       title: 'Scan to add to order',
       continuous: true,
-      onCode(code) { applyBarcode(code); },
-    });
+      onCode(code) { return onPosScanCode(code); },
+      onClose() { posScanBtn.classList.remove('active'); },
+      ...o,
+    };
+  }
+
+  function syncMobileInlineScanner() {
+    if (!posUseInlineScan()) {
+      const inlineEl = document.getElementById('posInlineScan');
+      if (inlineEl && !inlineEl.hidden && KFUI.scannerOpen && KFUI.scannerOpen()) {
+        KFUI.closeScanner();
+      }
+      posScanBtn.classList.remove('active');
+      return;
+    }
+    if (KFUI.scannerOpen && KFUI.scannerOpen()) return;
+    posScanBtn.classList.add('active');
+    KFUI.openScanner(posScannerOpts({ inline: '#posInlineScan' }));
+  }
+
+  posScanBtn.addEventListener('click', () => {
+    if (posUseInlineScan()) {
+      if (KFUI.scannerOpen && KFUI.scannerOpen()) {
+        KFUI.closeScanner();
+        return;
+      }
+      posScanBtn.classList.add('active');
+      KFUI.openScanner(posScannerOpts({ inline: '#posInlineScan' }));
+      return;
+    }
+    KFUI.openScanner(posScannerOpts());
   });
+
+  if (typeof mobileScanMq.addEventListener === 'function') {
+    mobileScanMq.addEventListener('change', syncMobileInlineScanner);
+  } else if (typeof mobileScanMq.addListener === 'function') {
+    mobileScanMq.addListener(syncMobileInlineScanner);
+  }
+
+  document.body.addEventListener('pointerdown', () => {
+    if (KFUI.unlockScanAudio) KFUI.unlockScanAudio();
+  }, { once: true, capture: true });
 
   // Hardware scanner while the search box is not focused (rapid key bursts).
   let scanBuf = '';
@@ -426,7 +509,7 @@
       scanBuf = '';
       if (!looksLikeBarcode(code) || gap > 140) return;
       e.preventDefault();
-      applyBarcode(code);
+      onPosScanCode(code);
       if (document.activeElement === search) search.value = '';
       return;
     }
@@ -503,5 +586,6 @@
   renderChips();
   renderGrid();
   renderCart({ instant: true });
+  syncMobileInlineScanner();
   search.focus();
 })();

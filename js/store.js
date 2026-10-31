@@ -244,10 +244,17 @@
     barcodeKey(s) {
       return String(s ?? '').replace(/\s+/g, '').toUpperCase();
     },
-    findProductByBarcode(code) {
+    findProductByBarcode(code, exceptProductId) {
       const key = KF.barcodeKey(code);
       if (!key) return null;
-      return KF.getProducts().find((p) => KF.barcodeKey(p.barcode) === key) || null;
+      const exceptId = exceptProductId != null && exceptProductId !== ''
+        ? Number(exceptProductId)
+        : null;
+      return KF.getProducts().find((p) => {
+        if (KF.barcodeKey(p.barcode) !== key) return false;
+        if (exceptId != null && p.id === exceptId) return false;
+        return true;
+      }) || null;
     },
 
     formatDateTime(iso) {

@@ -5,12 +5,14 @@
   const FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'codabar', 'itf', 'qr_code'];
 
   let overlay = null;
+  let inlineHost = null;
   let stream = null;
   let raf = 0;
   let zxing = null;
   let zxingReader = null;
   let detector = null;
   let closed = true;
+  let activeScanOpts = null;
   let lastCode = '';
   let lastAt = 0;
   let zxingPromise = null;
@@ -35,22 +37,43 @@
     return zxingPromise;
   }
 
-  function beep() {
-    try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      const ctx = new Ctx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
+  let audioCtx = null;
+  function scanAudio() {
+    if (audioCtx) return audioCtx;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    try { audioCtx = new Ctx(); } catch (e) { audioCtx = null; }
+    return audioCtx;
+  }
+
+  function playScanTone(kind) {
+    const ctx = scanAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (kind === 'success') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, t0);
+      osc.frequency.setValueAtTime(1175, t0 + 0.07);
+      gain.gain.setValueAtTime(0.001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.12, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.14);
+      osc.start(t0);
+      osc.stop(t0 + 0.15);
+    } else {
       osc.type = 'square';
-      osc.frequency.value = 880;
-      gain.gain.value = 0.05;
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.08);
-      setTimeout(() => ctx.close(), 200);
-    } catch (e) { /* ignore */ }
+      osc.frequency.setValueAtTime(220, t0);
+      osc.frequency.setValueAtTime(165, t0 + 0.1);
+      gain.gain.setValueAtTime(0.001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.08, t0 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+      osc.start(t0);
+      osc.stop(t0 + 0.24);
+    }
   }
 
   function stopStream() {
@@ -82,22 +105,41 @@
     closed = true;
     stopStream();
     document.removeEventListener('keydown', onEsc, true);
+    if (inlineHost) {
+      inlineHost.innerHTML = '';
+      inlineHost.hidden = true;
+      inlineHost.setAttribute('aria-hidden', 'true');
+      inlineHost = null;
+    }
     if (overlay) {
       overlay.remove();
       overlay = null;
     }
     document.body.classList.remove('scan-lock');
+    const done = activeScanOpts;
+    activeScanOpts = null;
+    if (done && typeof done.onClose === 'function') done.onClose();
   }
 
   function emit(code, opts) {
     const cleaned = KF.barcodeKey(code);
     if (!cleaned) return;
     const now = Date.now();
-    if (cleaned === lastCode && now - lastAt < 5000) return;
+    const dedupeMs = typeof opts.dedupeMs === 'number'
+      ? opts.dedupeMs
+      : (opts.continuous ? 5000 : 900);
+    if (cleaned === lastCode && now - lastAt < dedupeMs) {
+      playScanTone('error');
+      return;
+    }
     lastCode = cleaned;
     lastAt = now;
-    beep();
-    if (typeof opts.onCode === 'function') opts.onCode(String(code).trim());
+    let ok = true;
+    if (typeof opts.onCode === 'function') {
+      const result = opts.onCode(String(code).trim());
+      ok = result !== false;
+    }
+    playScanTone(ok ? 'success' : 'error');
     if (!opts.continuous) closeScanner();
   }
 
@@ -108,6 +150,8 @@
     if (!T) return hints;
     if (T.TRY_HARDER) hints.set(T.TRY_HARDER, true);
     if (T.ALSO_INVERTED) hints.set(T.ALSO_INVERTED, true);
+    if (T.ASSUME_GS1) hints.set(T.ASSUME_GS1, true);
+    if (T.PURE_BARCODE) hints.set(T.PURE_BARCODE, true);
     if (T.POSSIBLE_FORMATS && F) {
       hints.set(T.POSSIBLE_FORMATS, [
         F.EAN_13, F.EAN_8, F.UPC_A, F.UPC_E, F.CODE_128, F.CODE_39,
@@ -132,38 +176,35 @@
     return '';
   }
 
+  async function detectOnSource(source) {
+    if (!detector || !source) return '';
+    try {
+      const codes = await detector.detect(source);
+      if (codes && codes.length) {
+        const best = codes.find((c) => c.rawValue) || codes[0];
+        if (best && best.rawValue) return best.rawValue;
+      }
+    } catch (e) { /* next */ }
+    return '';
+  }
+
   async function grabCode(video) {
     if (video.readyState < 2) return '';
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     if (vw < 32 || vh < 32) return '';
 
+    const fromVideo = await detectOnSource(video);
+    if (fromVideo) return fromVideo;
+
     if (!canvas) {
       canvas = document.createElement('canvas');
       ctx = canvas.getContext('2d', { willReadFrequently: true, alpha: false });
     }
 
-    const cropW = vw * 0.92;
-    const cropH = vh * 0.52;
-    const sx = (vw - cropW) / 2;
-    const sy = (vh - cropH) / 2;
-    const maxW = 1400;
-    const scale = Math.min(1, maxW / cropW);
-    canvas.width = Math.max(320, Math.round(cropW * scale));
-    canvas.height = Math.max(120, Math.round(cropH * scale));
-    const draw = (filter) => {
-      ctx.filter = filter;
-      ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
-      ctx.filter = 'none';
-    };
-
     const readCanvas = async () => {
-      if (detector) {
-        try {
-          const codes = await detector.detect(canvas);
-          if (codes && codes[0] && codes[0].rawValue) return codes[0].rawValue;
-        } catch (e) { /* next */ }
-      }
+      let code = await detectOnSource(canvas);
+      if (code) return code;
       const fromZxing = decodeWithZXing(canvas);
       if (fromZxing) return fromZxing;
       if (zxing && typeof zxing.decodeFromCanvas === 'function') {
@@ -175,20 +216,50 @@
       return '';
     };
 
-    draw('grayscale(1) contrast(1.6) brightness(1.1)');
-    let code = await readCanvas();
-    if (code) return code;
-    draw('grayscale(1) contrast(1.85) brightness(1.15) invert(1)');
-    return readCanvas();
+    const crops = [
+      { w: 0.96, h: 0.58, y: 0.5 },
+      { w: 0.88, h: 0.42, y: 0.5 },
+      { w: 1, h: 1, y: 0.5 },
+    ];
+    const filters = [
+      'grayscale(1) contrast(1.85) brightness(1.1) saturate(0)',
+      'grayscale(1) contrast(2.05) brightness(1.14) saturate(0)',
+      'grayscale(1) contrast(1.7) brightness(1.08) invert(1)',
+      'grayscale(1) contrast(2.2) brightness(1.18) saturate(0)',
+    ];
+    const maxW = 1920;
+
+    for (const crop of crops) {
+      const cropW = vw * crop.w;
+      const cropH = vh * crop.h;
+      const sx = (vw - cropW) / 2;
+      const sy = (vh * crop.y) - cropH / 2;
+      const scale = Math.min(1.35, maxW / cropW);
+      canvas.width = Math.max(360, Math.round(cropW * scale));
+      canvas.height = Math.max(140, Math.round(cropH * scale));
+      for (const filter of filters) {
+        ctx.filter = filter;
+        ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+        const code = await readCanvas();
+        if (code) return code;
+      }
+    }
+    return '';
   }
 
   async function detectLoop(video, opts) {
+    let busy = false;
     const tick = async () => {
       if (closed) return;
-      try {
-        const code = await grabCode(video);
-        if (!closed && code) emit(code, opts);
-      } catch (e) { /* keep trying */ }
+      if (!busy) {
+        busy = true;
+        try {
+          const code = await grabCode(video);
+          if (!closed && code) emit(code, opts);
+        } catch (e) { /* keep trying */ }
+        busy = false;
+      }
       if (!closed) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -220,9 +291,13 @@
         ? await reader.decodeFromImageUrl(url)
         : await reader.decodeFromImageElement(img);
       if (result && result.getText()) emit(result.getText(), opts);
-      else statusEl.textContent = 'No barcode found in that photo. Try again or type it.';
+      else {
+        statusEl.textContent = 'No barcode found in that photo. Try again or type it.';
+        playScanTone('error');
+      }
     } catch (e) {
       statusEl.textContent = 'No barcode found in that photo. Try again or type it.';
+      playScanTone('error');
     } finally {
       URL.revokeObjectURL(url);
     }
@@ -239,7 +314,7 @@
       if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('continuous')) advanced.whiteBalanceMode = 'continuous';
       if (caps.zoom && typeof caps.zoom.min === 'number') {
         const span = (caps.zoom.max || caps.zoom.min) - caps.zoom.min;
-        advanced.zoom = caps.zoom.min + span * 0.12;
+        advanced.zoom = caps.zoom.min + span * 0.2;
       }
       if (Object.keys(advanced).length) await track.applyConstraints({ advanced: [advanced] });
     } catch (e) { /* device may ignore */ }
@@ -262,9 +337,10 @@
     try {
       stream = await tryStream({
         facingMode: { ideal: 'environment' },
-        width: { min: 640, ideal: 1920 },
-        height: { min: 360, ideal: 1080 },
+        width: { min: 640, ideal: 1920, max: 3840 },
+        height: { min: 360, ideal: 1080, max: 2160 },
         frameRate: { ideal: 30, max: 60 },
+        focusMode: { ideal: 'continuous' },
       });
     } catch (e) {
       try {
@@ -295,7 +371,8 @@
       } catch (e) { detector = null; }
     }
 
-    const torchBtn = overlay && overlay.querySelector('#scanTorchBtn');
+    const scanRoot = opts.scanRoot || overlay || inlineHost;
+    const torchBtn = scanRoot && scanRoot.querySelector('#scanTorchBtn');
     const caps = track && track.getCapabilities ? track.getCapabilities() : {};
     if (torchBtn && caps.torch) {
       torchBtn.hidden = false;
@@ -326,18 +403,8 @@
     });
   }
 
-  KFUI.openScanner = function (opts) {
-    const o = opts || {};
-    if (overlay) closeScanner();
-    closed = false;
-    lastCode = '';
-    lastAt = 0;
-
-    overlay = document.createElement('div');
-    overlay.className = 'scan-overlay';
-    overlay.setAttribute('role', 'dialog');
-    overlay.setAttribute('aria-modal', 'true');
-    overlay.innerHTML = `
+  function buildScanCardHtml(o) {
+    return `
       <div class="scan-card">
         <header class="scan-head">
           <h2>${o.title || 'Scan barcode'}</h2>
@@ -361,27 +428,30 @@
           <input id="scanPhotoFile" type="file" accept="image/*" capture="environment" hidden />
         </div>
       </div>`;
-    document.body.appendChild(overlay);
-    document.body.classList.add('scan-lock');
+  }
 
-    const video = overlay.querySelector('video');
-    const statusEl = overlay.querySelector('.scan-status');
-    const typed = overlay.querySelector('#scanTyped');
-    const useBtn = overlay.querySelector('#scanUseBtn');
-    const photoBtn = overlay.querySelector('#scanPhotoBtn');
-    const photoFile = overlay.querySelector('#scanPhotoFile');
+  function wireScanCard(root, o, inline) {
+    const video = root.querySelector('video');
+    const statusEl = root.querySelector('.scan-status');
+    const typed = root.querySelector('#scanTyped');
+    const useBtn = root.querySelector('#scanUseBtn');
+    const photoBtn = root.querySelector('#scanPhotoBtn');
+    const photoFile = root.querySelector('#scanPhotoFile');
 
     const useTyped = () => {
       const v = typed.value.trim();
       if (!v) {
         typed.focus();
+        playScanTone('error');
         return;
       }
       emit(v, o);
     };
 
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeScanner(); });
-    overlay.querySelector('.scan-close').addEventListener('click', closeScanner);
+    if (!inline) {
+      root.addEventListener('click', (e) => { if (e.target === root) closeScanner(); });
+    }
+    root.querySelector('.scan-close').addEventListener('click', closeScanner);
     useBtn.addEventListener('click', useTyped);
     typed.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); useTyped(); }
@@ -390,10 +460,48 @@
     photoFile.addEventListener('change', () => decodePhoto(photoFile.files[0], o, statusEl));
     document.addEventListener('keydown', onEsc, true);
 
-    startCamera(video, statusEl, o);
+    startCamera(video, statusEl, { ...o, scanRoot: root });
+  }
+
+  KFUI.openScanner = function (opts) {
+    const o = opts || {};
+    if (overlay || inlineHost) closeScanner();
+    activeScanOpts = o;
+    closed = false;
+    lastCode = '';
+    lastAt = 0;
+
+    const inlineSelector = o.inline;
+    const inlineEl = inlineSelector
+      ? (typeof inlineSelector === 'string' ? document.querySelector(inlineSelector) : inlineSelector)
+      : null;
+
+    if (inlineEl) {
+      inlineHost = inlineEl;
+      inlineHost.hidden = false;
+      inlineHost.setAttribute('aria-hidden', 'false');
+      inlineHost.innerHTML = buildScanCardHtml(o);
+      wireScanCard(inlineHost, o, true);
+      return { close: closeScanner };
+    }
+
+    overlay = document.createElement('div');
+    overlay.className = 'scan-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.innerHTML = buildScanCardHtml(o);
+    document.body.appendChild(overlay);
+    document.body.classList.add('scan-lock');
+    wireScanCard(overlay, o, false);
     return { close: closeScanner };
   };
 
+  KFUI.playScanTone = playScanTone;
+  KFUI.unlockScanAudio = function unlockScanAudio() {
+    const ctx = scanAudio();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  };
+
   KFUI.closeScanner = closeScanner;
-  KFUI.scannerOpen = () => !closed && !!overlay;
+  KFUI.scannerOpen = () => !closed && (!!overlay || !!inlineHost);
 })();

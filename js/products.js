@@ -201,18 +201,53 @@
 
   f.unit.addEventListener('change', syncUnit);
 
+  function editingProductId() {
+    return f.id.value ? Number(f.id.value) : null;
+  }
+
+  function barcodeConflictMessage(code) {
+    const existing = KF.findProductByBarcode(code, editingProductId());
+    if (!existing) return '';
+    return `This barcode already exists on "${existing.name}". Use a different code or edit that product.`;
+  }
+
+  function notifyBarcodeConflict(code) {
+    const msg = barcodeConflictMessage(code);
+    if (!msg) return false;
+    showError(msg);
+    KFUI.toast(msg, 'error');
+    return true;
+  }
+
   f.barcode.addEventListener('keydown', (e) => {
     if (e.key !== 'Enter') return;
     e.preventDefault();
+    if (notifyBarcodeConflict(f.barcode.value)) {
+      f.barcode.focus();
+      return;
+    }
     f.name.focus();
+  });
+
+  f.barcode.addEventListener('blur', () => {
+    const v = f.barcode.value.trim();
+    if (v.length < 3) return;
+    notifyBarcodeConflict(v);
   });
 
   document.getElementById('scanBarcodeBtn').addEventListener('click', () => {
     KFUI.openScanner({
       title: 'Scan product barcode',
+      dedupeMs: 900,
       onCode(code) {
-        f.barcode.value = String(code).trim();
+        const trimmed = String(code).trim();
+        f.barcode.value = trimmed;
+        if (notifyBarcodeConflict(trimmed)) {
+          f.barcode.focus();
+          return false;
+        }
         f.name.focus();
+        return true;
       },
     });
   });
@@ -264,9 +299,10 @@
     if (unit === 'packet' && (isNaN(pieces) || pieces < 2)) return showError('Enter how many pieces are in one packet.');
 
     const list = KF.getProducts();
-    const editingId = f.id.value ? Number(f.id.value) : null;
-    if (list.some((p) => KF.barcodeKey(p.barcode) === KF.barcodeKey(barcode) && p.id !== editingId)) {
-      return showError('That barcode is already used by another product.');
+    const editingId = editingProductId();
+    const duplicate = KF.findProductByBarcode(barcode, editingId);
+    if (duplicate) {
+      return showError(`This barcode already exists on "${duplicate.name}". Use a different code or edit that product.`);
     }
 
     const data = {
