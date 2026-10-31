@@ -1,5 +1,7 @@
-/* Trial ended: Paystack checkout unlocks the shop at once. WhatsApp is only for help. */
+/* Trial ended: contact KB.TECH STUDIO or enter the licence key (same idea as offline KASHFLOW). */
 (async function () {
+  const PHONE_INTL = '233531806381';
+
   if (window.KFCloud && KFCloud.enabled()) {
     try { await KFCloud.ready(); } catch (e) { /* continue */ }
   }
@@ -10,21 +12,18 @@
     return;
   }
 
-  const cfg = window.KF_PAYSTACK || {};
   const userEl = document.getElementById('lockUser');
-  const priceEl = document.getElementById('lockPrice');
-  const emailEl = document.getElementById('payEmail');
   const errEl = document.getElementById('lockError');
-  const payBtn = document.getElementById('payBtn');
+  const keyEl = document.getElementById('licenseKey');
+  const form = document.getElementById('activateForm');
+  const activateBtn = document.getElementById('activateBtn');
 
   userEl.textContent = session.displayName || session.username || '—';
-  const amountGhs = Number(cfg.amountGhs) || 0;
-  priceEl.textContent = amountGhs ? amountGhs.toFixed(2) : '—';
 
   const waText = encodeURIComponent(
-    `Hello KB.TECH STUDIO, I want to pay for KASHFLOW Online. My username is ${session.username || ''}.`,
+    `Hello KB.TECH STUDIO, my KASHFLOW Online trial ended. Please help me activate. My username is ${session.username || ''}.`,
   );
-  document.getElementById('lockWhatsApp').href = `https://wa.me/233531806381?text=${waText}`;
+  document.getElementById('lockWhatsApp').href = `https://wa.me/${PHONE_INTL}?text=${waText}`;
 
   function showError(msg) {
     errEl.textContent = msg;
@@ -35,42 +34,17 @@
     window.location.replace(session.role === 'admin' ? 'dashboard.html' : 'pos.html');
   }
 
-  async function unlock(paystackRef) {
+  async function unlockShop() {
     KF.markLicensed();
     try {
       if (window.KFCloud && KFCloud.enabled() && KFCloud.session()) {
-        await KFCloud.activateLicense({ paystackRef });
+        await KFCloud.activateLicense();
       }
-    } catch (err) { /* local unlock still stands */ }
-    sessionStorage.removeItem('kf_pay_ref');
-    payBtn.disabled = true;
-    errEl.hidden = true;
-    payBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Paid. Opening your shop…';
-    goIn();
+    } catch (e) { /* local unlock still stands */ }
   }
 
-  async function verifyPaystack(reference) {
-    const res = await fetch('/.netlify/functions/verify-paystack', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reference, shopId: session.shopId || '' }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.ok) {
-      throw new Error(json.message || 'Could not confirm payment.');
-    }
-    return json;
-  }
-
-  const pendingRef = new URLSearchParams(location.search).get('reference')
-    || sessionStorage.getItem('kf_pay_ref');
   if (KF.isLicensed() && !KF.isTrialLocked()) {
     goIn();
-    return;
-  }
-  if (pendingRef) {
-    KF.markLicensed();
-    unlock(pendingRef);
     return;
   }
   if (!KF.isTrialLocked()) {
@@ -78,68 +52,32 @@
     return;
   }
 
-  payBtn.addEventListener('click', () => {
+  keyEl.addEventListener('input', () => { errEl.hidden = true; });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
     errEl.hidden = true;
-    const key = String(cfg.publicKey || '');
-    if (!key.startsWith('pk_') || key.indexOf('YOUR_KEY') !== -1) {
-      showError('Paystack is not set up yet. Use WhatsApp to pay.');
+    const key = keyEl.value.trim();
+    if (!key) {
+      showError('Enter the licence key KB.TECH STUDIO gave you.');
+      keyEl.focus();
       return;
     }
-    if (!amountGhs) {
-      showError('Licence price is not set.');
+    activateBtn.disabled = true;
+    let ok = false;
+    try {
+      ok = await KF.verifyActivationCode(key);
+    } catch (err) {
+      ok = false;
+    }
+    if (!ok) {
+      activateBtn.disabled = false;
+      showError('That licence key is not valid. Call 053 180 6381 if you need help.');
       return;
     }
-    const email = emailEl.value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showError('Enter a real email for your Paystack receipt.');
-      emailEl.focus();
-      return;
-    }
-    if (typeof PaystackPop === 'undefined') {
-      showError('Could not load Paystack. Check your internet and try again.');
-      return;
-    }
-
-    payBtn.disabled = true;
-    const amount = Math.round(amountGhs * 100);
-    const meta = {
-      shopId: session.shopId || '',
-      username: session.username || '',
-      custom_fields: [
-        { display_name: 'KASHFLOW user', variable_name: 'username', value: session.username || '' },
-      ],
-    };
-    const onPaid = async (tran) => {
-      const reference = (tran && (tran.reference || tran.trxref)) || '';
-      if (reference) sessionStorage.setItem('kf_pay_ref', reference);
-      KF.markLicensed();
-      try {
-        if (reference) await verifyPaystack(reference);
-      } catch (err) { /* Paystack already confirmed success in the popup */ }
-      await unlock(reference);
-    };
-    const onCancel = () => { payBtn.disabled = false; };
-
-    if (typeof PaystackPop === 'function' && PaystackPop.prototype && PaystackPop.prototype.newTransaction) {
-      const pop = new PaystackPop();
-      pop.newTransaction({
-        key, email, amount, currency: cfg.currency || 'GHS',
-        channels: ['card', 'mobile_money', 'bank_transfer'],
-        metadata: meta, onSuccess: onPaid, onCancel,
-      });
-      return;
-    }
-    if (PaystackPop.setup) {
-      const handler = PaystackPop.setup({
-        key, email, amount, currency: cfg.currency || 'GHS',
-        channels: ['card', 'mobile_money', 'bank_transfer'],
-        metadata: meta, callback: onPaid, onClose: onCancel,
-      });
-      handler.openIframe();
-      return;
-    }
-    payBtn.disabled = false;
-    showError('Could not start Paystack. Refresh and try again.');
+    await unlockShop();
+    form.innerHTML = '<p class="lock-success"><i class="fa-solid fa-circle-check"></i> Activated! Opening your shop…</p>';
+    setTimeout(goIn, 1200);
   });
 
   document.addEventListener('kf:sync', () => {

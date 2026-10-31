@@ -27,51 +27,51 @@
 
   <main class="content pos-content">
     <div class="pos-layout">
-      <div class="pos-sticky-top">
-        <div class="pos-mobile-bar">
-          <div class="pos-mobile-bar-title">
-            <i class="fa-solid fa-cash-register"></i>
-            <span>Point of Sale</span>
-          </div>
-          <div class="pos-mobile-bar-actions">
-            <button id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
-            <button id="notifBtn" class="icon-btn notif" title="Notifications" aria-label="Notifications">
-              <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="panel pos-panel pos-scan-block">
-          <div class="pos-search">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input id="posSearch" type="search" placeholder="Scan barcode or search by name…" autocomplete="off" enterkeyhint="search" />
-            <button type="button" id="posScanBtn" class="pos-scan-btn" title="Scan barcode with camera" aria-label="Scan barcode with camera">
-              <i class="fa-solid fa-barcode"></i>
-            </button>
-          </div>
-          <div id="posInlineScan" class="pos-inline-scan" hidden aria-hidden="true"></div>
-          <p id="posScanHint" class="pos-scan-hint" hidden></p>
+      <div class="pos-mobile-bar">
+        <div class="pos-mobile-bar-title">
+          <i class="fa-solid fa-cash-register"></i>
+          <span>Point of Sale</span>
         </div>
       </div>
 
-      <div class="pos-body-split">
-        <section class="pos-main">
-          <div class="panel pos-panel pos-products-block">
-            <header class="pos-header">
+      <section class="pos-main">
+        <div class="panel pos-panel pos-products-block">
+          <header class="pos-header">
+            <div class="pos-header-intro">
               <h1><i class="fa-solid fa-cash-register"></i> Point of Sale</h1>
               <p class="muted">Welcome back, <span id="welcomeName">admin</span></p>
-              <p class="muted">Tap a product below to add it to the order</p>
-            </header>
-            <div class="pos-filter-row">
-              <div class="chips" id="catChips"></div>
+              <p class="muted">Scan a barcode, search, or tap a product</p>
             </div>
-            <div class="product-grid" id="productGrid"></div>
-            <p id="gridEmpty" class="empty-state" hidden><i class="fa-solid fa-box-open"></i> No products match your search.</p>
-          </div>
-          <footer id="appFooter"></footer>
-        </section>
+            <div class="header-actions">
+              <button type="button" id="themeToggle" class="icon-btn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+              <button type="button" id="notifBtn" class="icon-btn notif" title="Notifications" aria-label="Notifications">
+                <i class="fa-solid fa-bell"></i><span id="notifCount" class="badge" hidden>0</span>
+              </button>
+            </div>
+          </header>
 
-        <aside class="order-panel panel">
+          <div class="pos-search-wrap">
+            <div class="pos-search">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="posSearch" type="search" placeholder="Scan barcode or search by name…" autocomplete="off" enterkeyhint="search" />
+              <button type="button" id="posScanBtn" class="pos-scan-btn" title="Scan barcode with camera" aria-label="Scan barcode with camera">
+                <i class="fa-solid fa-barcode"></i>
+              </button>
+            </div>
+            <div id="posInlineScan" class="pos-inline-scan" hidden aria-hidden="true"></div>
+            <p id="posScanHint" class="pos-scan-hint" hidden></p>
+          </div>
+
+          <div class="pos-filter-row">
+            <div class="chips" id="catChips"></div>
+          </div>
+          <div class="product-grid" id="productGrid"></div>
+          <p id="gridEmpty" class="empty-state" hidden><i class="fa-solid fa-box-open"></i> No products match your search.</p>
+        </div>
+        <footer id="appFooter"></footer>
+      </section>
+
+      <aside class="order-panel panel">
           <header class="order-head">
             <h3>Current Order</h3>
             <div class="order-head-actions">
@@ -92,8 +92,7 @@
           <div class="order-line total"><span>Total</span><span id="orderTotal">GH ₵ 0.00</span></div>
           <button type="button" id="checkoutBtn" class="btn-orange full" disabled><i class="fa-solid fa-credit-card"></i> Proceed to Checkout</button>
         </footer>
-        </aside>
-      </div>
+      </aside>
     </div>
   </main>
 
